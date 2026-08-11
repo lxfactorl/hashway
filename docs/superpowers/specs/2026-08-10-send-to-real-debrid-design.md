@@ -107,7 +107,7 @@ A Firefox WebExtension (MV2) named "Send to Real-Debrid".
   - Non-torrent content / parse failure → "Not a valid .torrent file".
   - RD 503 / error code 25 / rate limit 429 or error code 34 → retry policy applies (NFR-2) **only to `selectFiles`** (never to `addMagnet`); then error text if exhausted.
   - `addMagnet` timeout / ambiguous network / explicit 503 or 429 → "Unknown outcome — check your Real-Debrid account" (no retry).
-  - Malicious/unexpected scheme → "Unsupported link".
+  - Malicious/unexpected scheme / cross-origin link → "Cross-origin link not supported".
 
 ## 5. Non-Functional Requirements (NFR)
 
