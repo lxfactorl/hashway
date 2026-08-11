@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Specification: Send to Real-Debrid (Firefox Extension)</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --surface: #2a2a3c;
+    --surface2: #33334a;
+    --text: #e8e8f0;
+    --muted: #a0a0b8;
+    --accent: #7aa2f7;
+    --green: #9ece6a;
+    --red: #f7768e;
+    --yellow: #e0af68;
+    --border: #3a3a52;
+    --mono: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+  h2 {
+    font-size: 1.15rem;
+    color: var(--accent);
+    margin-top: 2.2rem;
+    padding-bottom: .3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1rem; margin: 1.4rem 0 .5rem; color: var(--yellow); }
+  p { margin: .5rem 0; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .25rem 0; }
+  code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    padding: .1em .4em;
+    border-radius: 4px;
+    font-size: .9em;
+    color: var(--green);
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .8rem 1rem;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; color: var(--text); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: .8rem 0;
+    font-size: .92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: .5rem .7rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--surface); }
+  .meta { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+  .status {
+    display: inline-block;
+    font-size: .75rem;
+    padding: .15rem .6rem;
+    border-radius: 999px;
+    border: 1px solid var(--yellow);
+    color: var(--yellow);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-left: .5rem;
+    vertical-align: middle;
+  }
+  strong { color: var(--text); }
+  .risk { border-left: 3px solid var(--red); padding-left: .8rem; margin: .6rem 0; }
+  .todo { border-left: 3px solid var(--yellow); padding-left: .8rem; margin: .6rem 0; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Specification: Send to Real-Debrid (Firefox Extension)</h1>
+  <div class="meta">Date: 2026-08-10 &nbsp;·&nbsp; Status: <span class="status">Draft (revised after PRD review)</span></div>
+</header>
+
+<h2>1. Context</h2>
+<p>The user is a member of private torrent trackers and uses Real-Debrid (RD) to download torrents at high speed. The current manual workflow is multi-step and painful:</p>
+<ol>
+  <li>Find a torrent on the private tracker.</li>
+  <li>Obtain its infohash.</li>
+  <li>Go to btdig.com to find a public magnet for the same content (Real-Debrid cannot join private swarms).</li>
+  <li>Paste the magnet into the Real-Debrid web UI to get a debrid link.</li>
+  <li>Feed the debrid link to JDownloader2 for fast download.</li>
+</ol>
+<p><strong>Goal:</strong> collapse this into ONE step. Right-click a <code>.torrent</code> (or <code>magnet:</code>) link on any tracker page, choose &ldquo;Send to Real-Debrid&rdquo;, and the torrent is added to the user&rsquo;s Real-Debrid account automatically.</p>
+
+<h2>2. Key Assumptions</h2>
+<ul>
+  <li><strong>Approximately 90% of tested popular private-tracker infohashes were found through the available swarm</strong> (empirically tested by the user). We build the magnet directly from the infohash; btdig is NOT part of the product.</li>
+  <li>MVP is best-effort: private torrents are not blocked or inspected for <code>private=1</code>. The success notification means &ldquo;accepted/queued by RD&rdquo;, not &ldquo;will download&rdquo;.</li>
+  <li>A torrent that cannot be found through the available swarm may remain in RD without downloading. This is an accepted product limitation; no polling or download verification is performed in MVP.</li>
+  <li>The extension is <strong>personal use only</strong>, developed and maintained by an AI agent (opencode). Distribution/CI/CD design is deferred (see Open Items).</li>
+  <li>Target platform: <strong>Firefox stable on Windows</strong>.</li>
+  <li>User has a <strong>premium Real-Debrid account</strong> (the API rejects non-premium accounts with 403).</li>
+</ul>
+
+<h2>3. Product Shape</h2>
+<p>A Firefox WebExtension (MV2) named &ldquo;Send to Real-Debrid&rdquo;.</p>
+<ul>
+  <li>Context menu item on links: &ldquo;Send to Real-Debrid&rdquo;.</li>
+  <li>Options page with a password token field, save/clear controls, a <code>Test token</code> action, diagnostics viewer/export, and a link to <code>https://real-debrid.com/apitoken</code>.</li>
+  <li>No popup UI, no queue, no polling, no JDownloader integration, no btdig.</li>
+</ul>
+
+<h2>4. Functional Requirements (FR)</h2>
+
+<h3>FR-1: Context menu entry</h3>
+<ul>
+  <li>Register a context menu item &ldquo;Send to Real-Debrid&rdquo; on <code>contexts: ["link"]</code>.</li>
+  <li>Registered globally, but usable only on supported HTTPS tracker pages; Firefox restricted pages may not expose or execute the action.</li>
+</ul>
+
+<h3>FR-2: Link handling by type</h3>
+<table>
+  <tr><th>Link type</th><th>Behavior</th></tr>
+  <tr>
+    <td><code>magnet:?xt=urn:btih:&lt;40-hex&gt;</code></td>
+    <td>Validate the v1 btih format. Send to RD as-is in MVP. Display name = <code>dn</code> param from the link if present, else tab title. Tracker-parameter sanitization is post-MVP.</td>
+  </tr>
+  <tr>
+    <td><code>https://...</code> (torrent download link)</td>
+    <td>Fetch via content script, parse bencode, extract infohash, build magnet with <code>dn</code> = tab title, send to RD.</td>
+  </tr>
+  <tr>
+    <td><code>http://...</code> (non-HTTPS)</td>
+    <td>Reject with error notification. HTTPS only.</td>
+  </tr>
+  <tr>
+    <td>Any other scheme (<code>javascript:</code>, <code>data:</code>, <code>ftp:</code>, <code>mailto:</code>, etc.)</td>
+    <td>Reject with error notification.</td>
+  </tr>
+  <tr>
+    <td>v2-only or hybrid <code>.torrent</code> metadata</td>
+    <td>Reject with error notification. MVP supports v1 metadata only.</td>
+  </tr>
+</table>
+
+<h3>FR-3: Fetch the <code>.torrent</code> file</h3>
+<ul>
+  <li>The fetch is performed <strong>by a content script injected into the active tab</strong> (via <code>activeTab</code>, granted by the context-menu click).</li>
+  <li>Only HTTPS URLs with the same origin as the active tracker page are supported. <code>credentials: include</code> is used so the tracker&rsquo;s session cookies can authenticate the request.</li>
+  <li>Cross-origin URLs, cross-origin redirects, HTTP redirects, and CDN links are rejected in MVP. They require a separate permissions and credential-handling design.</li>
+  <li>The <code>.torrent</code> bytes are transferred to the background script via <code>runtime.sendMessage</code> (structured clone / ArrayBuffer).</li>
+  <li>The download URL does not need to end in <code>.torrent</code> (Gazelle/UNIT3D-style links like <code>torrents.php?action=download&amp;id=...</code> are common); detection is content-based, not URL-extension-based.</li>
+</ul>
+
+<h3>FR-4: Validate the downloaded bytes</h3>
+<ul>
+  <li>Stream the response and enforce a hard 25 MB size cap before retaining the full buffer. A response exceeding the cap is rejected.</li>
+  <li>Require a successful HTTP response before parsing.</li>
+  <li>Reject if the content is not bencode: first byte must be <code>d</code> (bencode dictionary), and a full parse must yield a top-level dict containing an <code>info</code> dict with <code>name</code> and (<code>length</code> XOR <code>files</code>).</li>
+  <li>HTML responses (first char <code>&lt;</code>) are treated as &ldquo;session required / not logged in&rdquo; errors.</li>
+</ul>
+
+<h3>FR-5: Extract the infohash</h3>
+<ul>
+  <li>Hand-written bencode parser, no dependencies. MVP supports v1 metadata only; v2-only and hybrid metadata are rejected.</li>
+  <li>The infohash is SHA-1 over the <strong>exact raw bytes</strong> of the <code>info</code> dictionary as they appear in the original file (record byte offsets during parsing; never re-encode).</li>
+  <li>Hash computed with Web Crypto API (<code>crypto.subtle.digest("SHA-1", bytes)</code>).</li>
+  <li>Parser must be defensive: depth limit (~20), string length limits, monotonic cursor, integer bounds; on malformed input fail with a clear error.</li>
+  <li>Torrent display name (for the magnet <code>dn</code>) = the active tab title for <code>.torrent</code> links, or the input magnet <code>dn</code> when present.</li>
+  <li>Normalize all display names by trimming whitespace/control characters, using <code>Untitled torrent</code> when empty, and capping the value at 200 characters.</li>
+</ul>
+
+<h3>FR-6: Build the magnet</h3>
+<ul>
+  <li>Format: <code>magnet:?xt=urn:btih:&lt;40-hex&gt;&amp;dn=&lt;URL-encoded tab title&gt;</code>.</li>
+  <li><code>dn</code> is mandatory so the torrent is recognizable in the Real-Debrid account.</li>
+</ul>
+
+<h3>FR-7: Add to Real-Debrid</h3>
+<ul>
+  <li>Auth: <code>Authorization: Bearer &lt;token&gt;</code>, token from the options page, stored in <code>storage.local</code>.</li>
+  <li>Sequence:
+    <ol>
+      <li><code>POST https://api.real-debrid.com/rest/1.0/torrents/addMagnet</code> with body <code>magnet=&lt;magnet&gt;</code>.
+        <br>Success = HTTP <strong>201</strong> (not 200). Response contains the torrent <code>id</code>.</li>
+      <li><code>POST https://api.real-debrid.com/rest/1.0/torrents/selectFiles/{id}</code> with body <code>files=all</code>.
+        <br>Success = HTTP <strong>202</strong> (&ldquo;action already done&rdquo;) or <strong>204</strong> (no content).</li>
+    </ol>
+  </li>
+  <li>&ldquo;All files&rdquo; is the file-selection policy (no filter).</li>
+  <li>Sending <code>files=all</code> immediately after <code>addMagnet</code> is the documented RD pattern; RD completes selection once metadata resolves (torrent may sit in <code>waiting_files_selection</code>/<code>magnet_conversion</code>).</li>
+  <li>MVP does not reconcile an unknown <code>addMagnet</code> result by hash. Blind retry behavior follows NFR-2 and may leave an unknown or duplicate remote outcome; reconciliation is post-MVP.</li>
+</ul>
+
+<h3>FR-8: Success feedback</h3>
+<ul>
+  <li>System notification: <code>Added: &lt;display name&gt;</code> where display name is the normalized display name.</li>
+  <li>Badge on the extension icon: ✓ on success, ✗ on last error.</li>
+  <li>RD error code 33 (<code>Torrent already active</code>) is an accepted outcome with notification <code>Already active in Real-Debrid</code>.</li>
+  <li>RD error code 31 (<code>Action already done</code>) is success for <code>selectFiles</code>.</li>
+</ul>
+
+<h3>FR-9: Error feedback</h3>
+<ul>
+  <li>Any failure produces a system notification with a short error message (no buttons).</li>
+  <li>If another action is active, show <code>Busy</code> and do not queue the new action.</li>
+  <li>Notable cases:
+    <ul>
+      <li>Missing token &rarr; <code>Real-Debrid token is not configured</code> and open the Options page.</li>
+      <li>401 / error code 8 (bad token) &rarr; &ldquo;Invalid Real-Debrid token&rdquo;.</li>
+      <li>Tracker returned login HTML &rarr; &ldquo;Session required on tracker&rdquo;.</li>
+      <li>Cross-origin <code>.torrent</code> link (CDN) &rarr; &ldquo;Cross-origin link not supported&rdquo;.</li>
+      <li>HTTP (non-HTTPS) link &rarr; &ldquo;HTTPS only&rdquo;.</li>
+      <li>Non-torrent content / parse failure &rarr; &ldquo;Not a valid .torrent file&rdquo;.</li>
+      <li>RD 503 / error code 25 / rate limit 429 or error code 34 &rarr; retry policy applies (NFR-2), then error text if exhausted.</li>
+      <li>Malicious/unexpected scheme &rarr; &ldquo;Unsupported link&rdquo;.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>5. Non-Functional Requirements (NFR)</h2>
+<table>
+  <tr><th>#</th><th>Category</th><th>Requirement</th></tr>
+  <tr><td>1</td><td>Performance</td><td>Target notification latency is &le; 5 s on ordinary network conditions. A hard 30 s overall timeout prevents an action from hanging indefinitely.</td></tr>
+  <tr><td>2</td><td>Reliability</td><td>Only one active action is allowed at a time; additional clicks receive <code>Busy</code> and are not queued. Retry with exponential backoff, max 3 attempts, on transient failures (503, 429, timeout, network). Fail fast on permanent failures (401, 403, 400). Unknown outcomes are surfaced explicitly.</td></tr>
+  <tr><td>3</td><td>Security</td><td>HTTPS only (all outbound requests, including the tracker fetch). Token only in the <code>Authorization</code> header, never in URLs, never logged. Minimal permissions.</td></tr>
+  <tr><td>4</td><td>Compatibility</td><td>Firefox stable on Windows.</td></tr>
+  <tr><td>5</td><td>Maintainability</td><td>Developed, tested and fixed entirely by an AI agent; automated tests; reproducible scenarios.</td></tr>
+  <tr><td>6</td><td>Observability</td><td>The extension MUST implement structured diagnostics: a bounded 5 MB ring-buffer event log in <code>storage.local</code>, sanitized exception name/message/stack capture, a masked state snapshot, and an Options-page <code>Download diagnostics</code> JSON export. A separate geckodriver harness provides deterministic reproduction with fake services.</td></tr>
+  <tr><td>7</td><td>Language</td><td>English for all UI, notifications, code, comments, commits.</td></tr>
+  <tr><td>8</td><td>Install/Update</td><td>Signed release distribution is deferred. MVP development uses temporary unpacked extension installation through Firefox debugging tools.</td></tr>
+</table>
+
+<h3>NFR-6 detail: why and what MUST be implemented</h3>
+<p><strong>Why:</strong> the extension is developed and maintained exclusively by an AI agent. Runtime evidence and deterministic reproduction reduce dependence on manually reconstructed failures. Direct arbitrary-path file writes are not available to a normal Firefox WebExtension, so MVP uses an explicit JSON export rather than promising invisible direct file access.</p>
+<p><strong>Mandatory (MUST):</strong></p>
+<ol>
+      <li><strong>Logging mechanism.</strong> Every action attempt appends structured events to a bounded 5 MB ring buffer in <code>storage.local</code>; oldest events are evicted when the cap is reached. Per-action event content:
+        <ul>
+          <li>Timestamp, action id, sanitized scheme/origin, magnet/hash,</li>
+          <li>per-step durations (fetch, parse, addMagnet, selectFiles),</li>
+          <li>RD HTTP status plus bounded/redacted error data, retry attempts, final outcome,</li>
+          <li>caught exception name, sanitized message, and stack trace.</li>
+          <li>MUST NOT contain the token, Authorization header, tracker passkey, or sensitive query parameters. The normalized tab title / dn is acceptable.</li>
+          <li>The Options page MUST provide <code>Download diagnostics</code>, exporting the current log and masked state snapshot as JSON through the Firefox Downloads API.</li>
+        </ul>
+      </li>
+      <li><strong>Reproduction path.</strong> A geckodriver harness launches Firefox with a test profile, loads the extension, drives a synthetic tracker page and verifies the extension flow against a fake tracker and fake RD API. Network assertions are made through those fake services or a test proxy; geckodriver alone is not a network capture tool. Live RD tests with a personal token are manual and never run in CI.</li>
+</ol>
+
+<h2>6. Permissions (manifest)</h2>
+<ul>
+  <li><code>contextMenus</code>, <code>notifications</code>, <code>activeTab</code>, <code>storage</code>, <code>downloads</code>.</li>
+  <li><code>permissions</code> (MV2): <code>https://api.real-debrid.com/*</code>.</li>
+  <li>NO <code>webRequest</code>, NO <code>cookies</code>, NO <code>&lt;all_urls&gt;</code>.</li>
+  <li>Fixed <code>browser_specific_settings.gecko.id</code> so <code>storage.local</code> (token, logs, state) survives reloads.</li>
+</ul>
+
+<h2>7. Component Outline</h2>
+<ul>
+  <li><code>manifest.json</code> &mdash; MV2, permissions above, fixed gecko.id.</li>
+  <li><code>background.js</code> &mdash; context menu registration, action orchestration, RD API calls, notifications, badge, log writer.</li>
+  <li><code>content.js</code> &mdash; minimal: on request from background, fetch a same-origin URL and return bytes; no DOM access.</li>
+  <li><code>bencode.js</code> &mdash; dependency-free bencode parser with bounds/depth guards, returns the exact raw byte range of the <code>info</code> dict.</li>
+  <li><code>options.html</code> / <code>options.js</code> &mdash; password token field, save/clear controls, &ldquo;Test token&rdquo; button calling <code>GET /user</code>, link to /apitoken, and diagnostics export/viewer.</li>
+  <li><code>log.js</code> &mdash; ring-buffer log writer (bounded), download-as-file export.</li>
+  <li><code>test/</code> &mdash; deterministic fixtures, fake tracker/RD services, parser tests, and geckodriver harness.</li>
+</ul>
+
+<h2>8. Verification Steps (implementation-time, not blocking spec)</h2>
+<ul>
+  <li>Empirical test on the user&rsquo;s real tracker: right-click a <code>.torrent</code> link while logged in &rarr; confirm binary arrives (validates content-script fetch + cookies).</li>
+  <li>Empirical test of cross-origin/CDN links &rarr; confirm the error path.</li>
+  <li>Geckodriver smoke test: load extension in a test profile, exercise a synthetic right-click against fake services, and assert RD calls, notifications, state, and diagnostics export.</li>
+  <li>Parser fixtures: valid v1 single-file/multi-file torrents, malformed bencode, oversized responses, HTML login responses, and v2-only/hybrid rejection.</li>
+</ul>
+
+<h2>9. Out of Scope (deliberate)</h2>
+<ul>
+  <li>btdig / public-magnet search (incl. name-based fallback).</li>
+  <li>JDownloader2 integration.</li>
+  <li>Queue / batch input.</li>
+  <li>Popup UI.</li>
+  <li>Polling / instantAvailability checks / honest download-status notifications.</li>
+  <li>File selection policy beyond &ldquo;all files&rdquo;.</li>
+  <li>OAuth2.</li>
+  <li>Multi-user / sharing / public AMO publication.</li>
+  <li>Magnet tracker-parameter sanitization and cross-origin/CDN fetch support.</li>
+</ul>
+
+<h2>10. Deferred Items</h2>
+<div class="todo">
+<ul>
+  <li>Signed release channel, Mozilla Add-ons unlisted distribution, and update mechanism &mdash; deferred to a later session.</li>
+  <li>Tech stack, linters, test framework, project culture, AGENTS.md, agentic flows &mdash; to be defined in subsequent sessions before development begins.</li>
+</ul>
+</div>
+
+<h2>11. Risks &amp; Known Limitations</h2>
+<div class="risk">
+<ul>
+  <li>Some private infohashes may have no usable public swarm &rarr; torrent can remain in RD without downloading. Accepted by user; MVP reports acceptance, not completion.</li>
+  <li>Incoming magnet <code>tr</code> parameters are passed through in MVP; a tracker URL may contain a private passkey. Sanitization is post-MVP.</li>
+  <li>An unknown <code>addMagnet</code> network result is not reconciled in MVP; the user receives an explicit unknown-status notification.</li>
+  <li>Firefox&rsquo;s <code>activeTab</code> + content-script fetch mechanism needs empirical verification. If cookie/partition behavior differs, same-origin fetch is considered unsupported in MVP; a <code>browser.cookies</code> fallback requires a separate permissions and security review.</li>
+  <li>RD rate limit 250 req/min: the design issues &le;3 requests per action, well within limits.</li>
+  <li>Real-Debrid accounts freeze after ~15 days of inactivity &rarr; token 401; surfaced as a clear error notification.</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

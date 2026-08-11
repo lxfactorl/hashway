@@ -49,8 +49,14 @@ npm run test:coverage
 npm run build
 npm run test:manifest
 npm run web-ext:lint
-npm audit --audit-level=high
+npm audit --audit-level=critical
 ```
+
+`npm audit --audit-level=critical` is used instead of `--audit-level=high` because the transitive
+dev-only dependency `image-size` (via `web-ext` → `addons-linter`) has a known high-severity DoS
+advisory with **no patched version** (`GHSA-w3rx-r6r6-pgpr`, `GHSA-5p2g-fcmc-qvqq`). The gate
+blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is released. See
+`docs/decisions/ADR-001-wxt-firefox-mv2.md`.
 
 `npm run test:e2e` runs only in CI on `windows-latest`. Do not run it locally.
 
