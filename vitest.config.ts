@@ -31,6 +31,7 @@ export default defineConfig({
         "node_modules/**",
         "tests/**",
         "src/entrypoints/**",
+        "src/adapters/firefox/**",
         "wxt.config.ts",
         "vitest.config.ts",
         "eslint.config.js",
