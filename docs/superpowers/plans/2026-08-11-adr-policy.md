@@ -71,7 +71,7 @@ No ADR is needed for:
 - UI or copy/text changes.
 - Test coverage additions.
 - Routine dependency updates inside approved policies (for example the `npm audit
-  --audit-level=critical` gate in ADR-001, the TypeScript hold in ADR-004, or the Dependabot
+--audit-level=critical` gate in ADR-001, the TypeScript hold in ADR-004, or the Dependabot
   automation policy).
 
 When in doubt, propose an ADR and let the owner decide.
@@ -147,12 +147,15 @@ Create `docs/decisions/templates/ADR-template.md` with this exact content:
 
 ```markdown
 <!-- Copy this file to docs/decisions/ADR-NNN-<kebab-case-topic>.md and fill it in. -->
+
 # ADR-NNN: <Short decision name>
 
 <!-- A new ADR is created as Accepted. -->
+
 - **Status:** Accepted
 - **Date:** <YYYY-MM-DD>
 - **Deciders:** lxfactorl (owner), AI agent (executor)
+
 <!-- Only when this ADR replaces or is replaced by another ADR: -->
 <!-- - **Supersedes:** ADR-00Y -->
 <!-- - **Superseded by:** ADR-00X -->
@@ -210,11 +213,22 @@ Read `AGENTS.md` lines 108-112 to confirm the exact text at the boundary between
 
 - [ ] **Step 2: Insert the ADR policy section**
 
-Insert the following between line 109 (`- Do not start implementation on `main` without
-explicit user consent.`) and line 111 (`## Testing and documentation`):
+Insert the following immediately before the line `## Testing and documentation` (line 111). The
+existing blank line (line 110) stays before the new section; the block's trailing blank line
+separates the new section from `## Testing and documentation`. The result must be:
+
+```text
+- Do not start implementation on `main` without explicit user consent.
+<blank>
+## ADR policy
+<bullets>
+<blank>
+## Testing and documentation
+```
+
+The exact block to insert (before `## Testing and documentation`):
 
 ```markdown
-
 ## ADR policy
 
 - Propose an ADR (draft text in discussion) before implementation for: deviations from the
@@ -229,6 +243,7 @@ explicit user consent.`) and line 111 (`## Testing and documentation`):
   cross-references. Numbering is sequential; the next number is the next free one (ADR-005 and
   beyond).
 - See `docs/decisions/ADR-POLICY.md` and `docs/decisions/templates/ADR-template.md`.
+
 ```
 
 - [ ] **Step 3: Verify the section**
