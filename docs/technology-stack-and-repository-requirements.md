@@ -16,7 +16,7 @@ The first release must remain extension-only. Do not add a backend, database, mo
 | Extension framework | WXT 0.21.3 candidate | Pin through `package-lock.json`; verify the exact generated production manifest |
 | Browser target | Firefox Stable on Windows | Firefox MV2 for the first release |
 | Language | TypeScript 5.x | Strict type checking is mandatory. Beyond `strict: true`, enable `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `noImplicitOverride`, `exactOptionalPropertyTypes`, `isolatedModules`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` |
-| Runtime | Node.js 24 LTS for tooling | Use the repository-pinned version in local development and CI. Pin via `.nvmrc` (single line: `24`) plus `engines.node: ">=24.0.0 <25.0.0"` and `engineStrict: true` in `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input |
+| Runtime | Node.js 25 for tooling | Use the repository-pinned version in local development and CI. Pin via `.nvmrc` (single line: `25`) plus `engines.node: ">=25.0.0 <26.0.0"` and `engineStrict: true` in `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input. Deviation from the original Node 24 LTS pin is recorded in `docs/decisions/ADR-001-wxt-firefox-mv2.md` |
 | Package manager | npm | Use `npm ci` in CI; commit the lockfile |
 | UI | Plain HTML, CSS, and TypeScript/DOM APIs | Do not add React or another UI framework for the initial Options page |
 | Build | WXT build pipeline | Do not add a separate Vite or esbuild pipeline unless WXT is rejected after validation |
@@ -230,15 +230,15 @@ Before implementation:
   enforcement.
 - Add a root `AGENTS.md`.
 - Add `.gitignore`, `.gitattributes`, `.editorconfig`, `.prettierrc`, `.prettierignore`, `.nvmrc`, `package.json`, and `package-lock.json`. `.gitattributes` sets `* text=auto eol=lf` and binary exemptions (for example, `*.png -text`); `.editorconfig` enforces UTF-8, LF, final newline, and indent independently of editor.
-- Pin the Node.js version with `.nvmrc` (single line: `24`). Add `engines.node: ">=24.0.0 <25.0.0"` and `engineStrict: true` to `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input.
+- Pin the Node.js version with `.nvmrc` (single line: `25`). Add `engines.node: ">=25.0.0 <26.0.0"` and `engineStrict: true` to `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input. See the Node version deviation in `docs/decisions/ADR-001-wxt-firefox-mv2.md`.
 - Define a production build and a separate test-only configuration.
 - Ensure test-only host permissions and endpoints cannot enter the production artifact.
 - Add the manifest contract test before feature implementation.
 - Add a CI workflow with required checks.
 - Add a root `CHANGELOG.md`.
 - Add release automation that generates or updates `CHANGELOG.md` from Conventional Commits when a release is created. The approved tool is **release-please** (`googleapis/release-please-action`). It runs on every merge to `main`, opens a release PR with a bumped version and a `CHANGELOG.md` diff, and on approval of that release PR creates a git tag `vX.Y.Z` and a GitHub Release `vX.Y.Z`. The repository is `private: true` in `package.json`, so release-please bumps the version and creates the release but does not publish to npm.
-- Add a `release-assets.yml` workflow triggered by `release: published` that runs `npm ci`, `wxt build`, zips the `dist` output into `hashway-vX.Y.Z.zip`, and uploads the zip as a GitHub Release asset so the developer can install the new version in Firefox via `about:debugging` → Load Temporary Add-on.
-- Keep release automation free of provider credentials, tokens, authorization headers, and other secrets. The release flow must not require any secret beyond the default `GITHUB_TOKEN`.
+- Build and upload release assets from the Release workflow itself: after a release is created, `release.yml` runs `npm ci` + `wxt build`, signs the extension with AMO via `web-ext sign --channel unlisted` (skipping if the AMO secrets are absent), and uploads both `hashway-vX.Y.Z.zip` and the signed `.xpi` as Release assets for permanent installation via `npm run update:extension` (see `docs/decisions/ADR-002-amo-ci-signing.md`).
+- Keep release automation free of provider credentials, tokens, authorization headers, and other secrets beyond what the approved baseline permits. The release flow requires the default `GITHUB_TOKEN`; AMO API credentials (`AMO_API_KEY`, `AMO_API_SECRET`) are stored in GitHub Secrets and consumed only by the release workflow (`${{ secrets.* }}`), never logged, printed, or exported to artifacts or agents.
 - Pin every GitHub Actions `uses:` to a full commit SHA, not a tag, once the GitHub repository is created. Update the same SHA-pinned versions through Dependabot's `github-actions` ecosystem.
 
 Recommended top-level layout:
@@ -277,7 +277,6 @@ docs/
   workflows/
     ci.yml
     release.yml
-    release-assets.yml
 ```
 
 Generated build output must be ignored and must never be edited manually. Direct provider credentials, Firefox profiles, downloaded torrent files, diagnostics exports, and local test artifacts must be ignored.
@@ -296,6 +295,8 @@ The root `AGENTS.md` must be written in English and define:
 - The prohibition on arbitrary new dependencies and permissions without justification.
 - The prohibition on `npx @latest`, `npm audit fix`, and unreviewed lockfile changes.
 - The prohibition on push, merge, release, workflow dispatch, and secret changes without explicit approval.
+- The release pipeline and extension installation flow: release-please releases, AMO CI signing in `release.yml`, and `npm run update:extension` for permanent profile installation (see ADR-002).
+- The rule that AMO API credentials (`AMO_API_KEY`, `AMO_API_SECRET`) exist only in GitHub Secrets for the release workflow and are never logged, printed, exported, or exposed to agents or local tooling.
 - The requirement to update tests and documentation with behavior changes.
 - The requirement to verify claims against official documentation, dependency source, or executable tests.
 
@@ -338,7 +339,7 @@ npm run test:coverage
 npm run build
 npm run test:manifest
 web-ext lint
-npm audit --audit-level=high
+npm audit --audit-level=critical
 npm run test:e2e
 ```
 
@@ -356,10 +357,10 @@ Additional rules:
 
 - Pin direct dependencies and review every update.
 - Do not use Git URL dependencies for production tooling.
-- Do not run automatic forced dependency upgrades. Dependabot opens PRs; it does not auto-merge.
+- Do not run automatic forced dependency upgrades. Dependabot opens PRs; green minor/patch updates are auto-merged by `.github/workflows/dependabot-automerge.yml`, while major bumps, merge conflicts, and audit failures are labeled `needs-review` for a human decision.
 - Pin GitHub Actions to full commit SHAs (not tags) once the GitHub repository is created. Update SHA-pinned actions through Dependabot's `github-actions` ecosystem only.
-- Use least-privilege workflow permissions. `ci.yml` uses `permissions: contents: read`. `release.yml` and `release-assets.yml` use `contents: write` and `pull-requests: write` only where release-please and asset upload require them.
-- Keep provider secrets out of all CI environments. The release flow must not require any secret beyond the default `GITHUB_TOKEN`.
+- Use least-privilege workflow permissions. `ci.yml` uses `permissions: contents: read`. `release.yml` uses `contents: write` and `pull-requests: write` only where release-please and asset upload require them.
+- Keep provider secrets out of all CI environments except the approved AMO signing path: the release flow requires only the default `GITHUB_TOKEN` plus `AMO_API_KEY`/`AMO_API_SECRET` from GitHub Secrets (see `docs/decisions/ADR-002-amo-ci-signing.md`).
 - Do not permit disabled tests, `.only`, unhandled rejections, or ignored lint directives in CI.
 
 ### Release Automation
@@ -367,7 +368,9 @@ Additional rules:
 - `release-please` (`googleapis/release-please-action`) runs on every merge to `main` and opens a release PR when there are new Conventional Commit messages to release. The PR title forms the squashed commit message that release-please parses.
 - A PR title convention is enforced: `feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`, `build:`, `ci:`. `chore(deps):` Dependabot PRs are grouped under "Misc" and hidden from the user-visible changelog sections.
 - When the release PR is approved and merged, release-please creates a git tag `vX.Y.Z` and a GitHub Release `vX.Y.Z`.
-- `release-assets.yml` triggers on `release: published`, runs `npm ci`, `wxt build`, zips the built `dist` output into `hashway-vX.Y.Z.zip`, and uploads the zip as a GitHub Release asset.
+- `release.yml` builds the extension, signs it with AMO via `web-ext sign --channel unlisted`
+  (skipping when the AMO secrets are absent), and uploads `hashway-vX.Y.Z.zip` plus the signed
+  `.xpi` as GitHub Release assets.
 - The developer installs a new version by downloading the zip from the GitHub Release and loading
   it in Firefox via `about:debugging` → Load Temporary Add-on. From the first release that lands
   after CI signing is enabled, the Release also carries a signed `hashway-vX.Y.Z-an+fx.xpi`
@@ -385,7 +388,7 @@ Do not add a filesystem MCP or generic browser/search MCP. After the repository 
 
 The AI agent (OpenCode) is responsible for everything up to, but not including, the browser E2E step on the local machine:
 
-- Locally the agent runs `format:check`, `typecheck`, `lint`, `test:unit`, `test:coverage`, `build`, `test:manifest`, `web-ext:lint`, and `npm audit --audit-level=high`.
+- Locally the agent runs `format:check`, `typecheck`, `lint`, `test:unit`, `test:coverage`, `build`, `test:manifest`, `web-ext:lint`, and `npm audit --audit-level=critical`.
 - The agent does **not** run Firefox, Selenium, or geckodriver locally. Browser E2E runs only in CI on `windows-latest`.
 - After pushing a branch, the agent opens a PR via `gh pr create`, watches CI with `gh pr checks --watch`, and reads the CI log with `gh run view <id> --log` to triage failures.
 - After human approval, the agent squash-merges the PR (`gh pr merge --squash`), confirms the release-please release PR, and after its approval reports the resulting release via `gh release view vX.Y.Z`.
@@ -427,7 +430,7 @@ The setup phase is complete when the repository delivers a hello-world extension
 
 ### End-to-End Flow (Per Code Change)
 
-1. The AI agent writes code on a feature branch and runs locally: `format:check`, `typecheck`, `lint`, `test:unit`, `test:coverage`, `build`, `test:manifest`, `web-ext:lint`, `npm audit --audit-level=high`. No browser is launched locally.
+1. The AI agent writes code on a feature branch and runs locally: `format:check`, `typecheck`, `lint`, `test:unit`, `test:coverage`, `build`, `test:manifest`, `web-ext:lint`, `npm audit --audit-level=critical`. No browser is launched locally.
 2. The agent pushes the branch and opens a PR via `gh pr create`.
 3. CI (`ci.yml`) on `windows-latest` runs the same gates plus `test:e2e` (Selenium + geckodriver + Firefox Stable + temporary profile + hello-world assertions: `badgeText === "ON"`, `options_ui` present, extension loaded without console errors).
 4. `commitlint` (`ci.yml` separate job) validates the PR commits and PR title against Conventional Commits. `pr-link` (`ci.yml` separate job) requires the PR body to reference a GitHub issue via a closing keyword (Dependabot PRs exempt).
@@ -437,17 +440,20 @@ The setup phase is complete when the repository delivers a hello-world extension
 8. CI runs the same gates on the release PR.
 9. The human approves the release PR; it merges.
 10. release-please creates git tag `vX.Y.Z` and GitHub Release `vX.Y.Z`.
-11. `release-assets.yml` triggers on `release: published`, runs `wxt build`, uploads `hashway-vX.Y.Z.zip` as a GitHub Release asset.
+11. `release.yml` builds the extension, signs it with AMO via `web-ext sign --channel unlisted`
+    (skipping if the AMO secrets are absent), and uploads `hashway-vX.Y.Z.zip` plus the signed
+    `.xpi` as GitHub Release assets.
 12. The agent reports the release via `gh release view vX.Y.Z`.
-13. The developer downloads the zip and loads it in Firefox via `about:debugging` → Load Temporary Add-on.
+13. The developer runs `npm run update:extension` (or loads the zip temporarily via
+    `about:debugging` → Load Temporary Add-on for debugging).
 
 ### Execution Order (Setup Phase)
 
 The setup phase executes the following steps in order. Each step depends on the previous one.
 
 1. `git init -b main`, initial commit.
-2. Meta-files: `.gitignore`, `.gitattributes` (`* text=auto eol=lf` + `*.png -text`), `.editorconfig`, `.nvmrc` (`24`), `LICENSE` (MIT), `README.md` (minimal), `AGENTS.md` (all Required AGENTS.md Rules), `CHANGELOG.md` (header only), `docs/decisions/` directory.
-3. `package.json` + lockfile: `private: true`, `engines.node: ">=24.0.0 <25.0.0"`, `engineStrict: true`, scripts mirroring the required CI checks (see "Required `package.json` scripts" below).
+2. Meta-files: `.gitignore`, `.gitattributes` (`* text=auto eol=lf` + `*.png -text`), `.editorconfig`, `.nvmrc` (`25`), `LICENSE` (MIT), `README.md` (minimal), `AGENTS.md` (all Required AGENTS.md Rules), `CHANGELOG.md` (header only), `docs/decisions/` directory.
+3. `package.json` + lockfile: `private: true`, `engines.node: ">=25.0.0 <26.0.0"`, `engineStrict: true`, scripts mirroring the required CI checks (see "Required `package.json` scripts" below).
 4. Install pinned `devDependencies` (exact versions, no `^`/`~`). `npm ci` runs from a clean clone.
 5. `tsconfig.json` + `tsconfig.base.json` + `tsconfig.tests.json` with `strict` and the full paranoid flag set listed in the Technology Stack table. Path aliases (`@domain/*`, `@application/*`, `@ports/*`, `@adapters/*`, `@entrypoints/*`, `@tests/*`) declared in `tsconfig.base.json` `paths`.
 6. `eslint.config.js` (flat) with `no-restricted-imports` per-layer overrides, `--max-warnings=0`.
@@ -459,14 +465,14 @@ The setup phase executes the following steps in order. Each step depends on the 
 12. `tests/unit/manifest-contract.test.ts`: validates `dist/manifest.json` against the contract (MV2, gecko.id, permissions allowlist exact match, no forbidden permissions, no `localhost`/`127.0.0.1`/`*.test` in `host_permissions`, `options_ui` present, `background` present, `content_scripts.matches` HTTPS-only if present).
 13. `tests/e2e/hello-world.e2e.ts`: Selenium + geckodriver + Firefox Stable temp profile. Loads built `dist/`. Asserts `badgeText === "ON"`, no console errors, `options_ui` exists. Retries flaky runs at most twice. Uploads artifacts on failure.
 14. `web-ext:lint` passes on the built artifact.
-15. `.github/workflows/ci.yml` (`quality`, `commitlint`, `pr-link`, `e2e` jobs), `.github/workflows/release.yml` (release-please), `.github/workflows/release-assets.yml` (build + upload zip on `release: published`), `.github/workflows/dependabot-automerge.yml` (Dependabot PR triage: auto-merge minor/patch on green checks, `needs-review` for major/conflicts/audit failures), `.github/dependabot.yml` (npm weekly + github-actions weekly).
-16. Local final dry-run: `format:check && typecheck && lint && test:coverage && build && test:manifest && web-ext:lint && npm audit --audit-level=high && test:e2e`.
+15. `.github/workflows/ci.yml` (`quality`, `commitlint`, `pr-link`, `e2e` jobs), `.github/workflows/release.yml` (release-please + AMO sign + asset upload), `.github/workflows/dependabot-automerge.yml` (Dependabot PR triage: auto-merge minor/patch on green checks, `needs-review` for major/conflicts/audit failures), `.github/dependabot.yml` (npm weekly + github-actions weekly).
+16. Local final dry-run: `format:check && typecheck && lint && test:coverage && build && test:manifest && web-ext:lint && npm audit --audit-level=critical && test:e2e`.
 17. `gh repo create lxfactorl/hashway --public --source=. --remote=origin --description="..."` and push `main`.
 18. Branch protection on `main`: required reviews = 1, required status checks = `quality`, `commitlint`, `pr-link`, `e2e`, `enforce_admins: false`.
 19. SHA-pin all `uses:` in workflows to full commit SHAs (via `gh api repos/<owner>/<repo>/git/refs/tags/<tag>`).
 20. Push setup commits (Conventional Commit messages), open the setup PR or push directly to `main` before branch protection is active; then enable branch protection.
 21. Verify with `gh run list` that the CI run including E2E is green.
-22. Trigger the first release: commit `feat: hello-world extension` → release-please opens release-PR → approve → merge → tag `v0.1.0` → `release-assets.yml` uploads `hashway-v0.1.0.zip`.
+22. Trigger the first release: commit `feat: hello-world extension` → release-please opens release-PR → approve → merge → tag `v0.1.0` → `release.yml` uploads `hashway-v0.1.0.zip`.
 23. Manual install gate: developer downloads `hashway-v0.1.0.zip`, loads it in Firefox `about:debugging`, observes badge "ON" and Options page "Hashway".
 
 ### Required `package.json` scripts
