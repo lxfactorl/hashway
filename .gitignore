@@ -32,3 +32,6 @@ coverage/
 
 # Superpowers SDD workspace
 .superpowers/
+
+# opencode
+.opencode/
