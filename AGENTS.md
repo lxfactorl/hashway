@@ -89,6 +89,12 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
   `npm audit --audit-level=critical` are auto-merged; major bumps, merge conflicts, and audit
   failures are labeled `needs-review` and require a human decision. Human review still applies to
   every dependency update that reaches the `needs-review` state.
+- TypeScript is held on the 5.x line: `typescript-eslint` (latest 8.67.0) peer-requires
+  `typescript <6.1.0`, so a TS 7+ major bump breaks `npm ci` and the `strictTypeChecked` lint
+  pipeline. `.github/dependabot.yml` ignores `typescript` `version-update:semver-major` until
+  `typescript-eslint` accepts `>=6.1.0`. Revert the ignore in the same PR that bumps
+  `typescript-eslint` to a TS-7-compatible release. See
+  `docs/decisions/ADR-004-typescript-7-hold.md`.
 
 ## Git and remote operations
 
@@ -101,6 +107,21 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
   enforced by the `pr-link` CI check. Dependabot PRs and release-please PRs (head branch
   prefixed `release-please--`) are exempt.
 - Do not start implementation on `main` without explicit user consent.
+
+## ADR policy
+
+- Propose an ADR (draft text in discussion) before implementation for: deviations from the
+  approved baseline spec (`docs/technology-stack-and-repository-requirements.md`) or from a
+  policy in this file, and architectural decisions (new runtime dependency, layers/boundaries,
+  storage schema, event schema, retry strategy, E2E topology, token/threat-model changes).
+- Never create an ADR file without explicit owner approval. Commit it with the implementing
+  change or as a standalone PR.
+- No ADR is needed for bugfixes, refactors without boundary changes, UI/text changes, test
+  coverage, or routine dependency updates inside approved policies.
+- Statuses: Accepted / Superseded / Deprecated, with `Supersedes` / `Superseded by`
+  cross-references. Numbering is sequential; the next number is the next free one (ADR-005 and
+  beyond).
+- See `docs/decisions/ADR-POLICY.md` and `docs/decisions/templates/ADR-template.md`.
 
 ## Testing and documentation
 

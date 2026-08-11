@@ -15,7 +15,7 @@ The first release must remain extension-only. Do not add a backend, database, mo
 |---|---|---|
 | Extension framework | WXT 0.21.3 candidate | Pin through `package-lock.json`; verify the exact generated production manifest |
 | Browser target | Firefox Stable on Windows | Firefox MV2 for the first release |
-| Language | TypeScript 5.x | Strict type checking is mandatory. Beyond `strict: true`, enable `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `noImplicitOverride`, `exactOptionalPropertyTypes`, `isolatedModules`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` |
+| Language | TypeScript 5.x | Strict type checking is mandatory. Beyond `strict: true`, enable `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `noImplicitOverride`, `exactOptionalPropertyTypes`, `isolatedModules`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`. Hold on the 5.x line: `typescript-eslint` (latest 8.67.0) peer-requires `typescript <6.1.0`, so TS 7 breaks `npm ci` and the `strictTypeChecked` lint pipeline. Dependabot ignores `typescript` major bumps until `typescript-eslint` accepts `>=6.1.0` (see `docs/decisions/ADR-004-typescript-7-hold.md`) |
 | Runtime | Node.js 25 for tooling | Use the repository-pinned version in local development and CI. Pin via `.nvmrc` (single line: `25`) plus `engines.node: ">=25.0.0 <26.0.0"` and `engineStrict: true` in `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input. Deviation from the original Node 24 LTS pin is recorded in `docs/decisions/ADR-001-wxt-firefox-mv2.md` |
 | Package manager | npm | Use `npm ci` in CI; commit the lockfile |
 | UI | Plain HTML, CSS, and TypeScript/DOM APIs | Do not add React or another UI framework for the initial Options page |
@@ -317,7 +317,7 @@ Documentation is split between what the setup phase must deliver and what is mai
 - `docs/security.md`: threat model, permissions, token handling, magnet sanitization, redirect policy, and logging redaction.
 - `docs/testing.md`: unit, property, fake-service, WebDriver, manual, and CI test procedures.
 - `docs/diagnostics.md`: event schema, redaction rules, byte budget, export format, and failure artifacts.
-- `docs/decisions/ADR-*.md` (beyond ADR-001): major choices such as token storage, retry behavior, and Firefox E2E topology, written when the decision is actually made.
+- `docs/decisions/ADR-*.md`: architecture decisions and baseline deviations, created per the ADR policy (`docs/decisions/ADR-POLICY.md`).
 
 ### Deferred Documentation
 

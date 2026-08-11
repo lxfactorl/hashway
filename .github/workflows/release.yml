@@ -18,7 +18,7 @@ jobs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - id: release
-        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
 
   build-upload:
     needs: release-please
@@ -30,8 +30,8 @@ jobs:
       AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
       AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: npm
