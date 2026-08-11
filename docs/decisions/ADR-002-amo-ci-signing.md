@@ -19,12 +19,14 @@ prohibited any AMO credentials in CI (line 379) and deferred all signing.
 
 Adopt **AMO signing in CI**:
 
-1. `release.yml` job `build-upload` gains a guarded signing step:
-   `npx web-ext sign --source-dir dist --channel unlisted --api-key ${{ secrets.AMO_API_KEY }}
---api-secret ${{ secrets.AMO_API_SECRET }} --artifacts-dir web-ext-artifacts`.
-   The step runs only when both secrets are present (`if: ${{ secrets.AMO_API_KEY != '' &&
-secrets.AMO_API_SECRET != '' }}`); otherwise it skips and the Release carries only the unsigned
-   zip.
+1. `release.yml` job `build-upload` maps the secrets to job-level environment variables
+   (`AMO_API_KEY`, `AMO_API_SECRET`) and gains a guarded signing step:
+   `npx web-ext sign --source-dir dist --channel unlisted --api-key $env:AMO_API_KEY
+--api-secret $env:AMO_API_SECRET --artifacts-dir web-ext-artifacts`.
+   The step runs only when both env vars are present (`if: env.AMO_API_KEY != '' &&
+env.AMO_API_SECRET != ''`); otherwise it skips and the Release carries only the unsigned
+   zip. Secrets cannot be referenced directly in `if:` conditionals, so the guard uses the
+   job-level env values instead.
 2. The signed `hashway-v<X.Y.Z>-an+fx.xpi` is uploaded to the same GitHub Release.
 3. A local script `npm run update:extension` (`scripts/update-extension.ps1`) downloads the latest
    signed `.xpi` from the public GitHub API and writes it to

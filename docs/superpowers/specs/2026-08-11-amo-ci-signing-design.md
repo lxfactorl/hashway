@@ -65,20 +65,24 @@ GitHub Release (unsigned zip)
 Modify `.github/workflows/release.yml` job `build-upload`:
 
 - Keep existing build + zip steps (`npm run build`, zip of `dist/`).
-- Add a signing step, guarded so it **skips when keys are absent**:
+- Map the secrets to job-level `env` (secrets cannot be referenced directly in `if:`
+  conditionals) and add a signing step, guarded so it **skips when keys are absent**:
 
   ```yaml
+  env:
+    AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+    AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+  ```
+  ```yaml
   - name: Sign extension (AMO)
-    if: ${{ secrets.AMO_API_KEY != '' && secrets.AMO_API_SECRET != '' }}
-    env:
-      AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
-      AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+    if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
     run: |
       npx web-ext sign --source-dir dist --channel unlisted `
         --api-key $env:AMO_API_KEY `
         --api-secret $env:AMO_API_SECRET `
         --artifacts-dir web-ext-artifacts
   ```
+  The `Locate signed xpi` and `Upload signed xpi` steps use the same `env`-based guard.
 
 - Upload **both** assets to the Release:
   - `hashway-v<X.Y.Z>.zip` (unsigned, for debugging/temporary load)
