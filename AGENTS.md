@@ -108,6 +108,21 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
   prefixed `release-please--`) are exempt.
 - Do not start implementation on `main` without explicit user consent.
 
+## ADR policy
+
+- Propose an ADR (draft text in discussion) before implementation for: deviations from the
+  approved baseline spec (`docs/technology-stack-and-repository-requirements.md`), and
+  architectural decisions (new runtime dependency, layers/boundaries, storage schema, event
+  schema, retry strategy, E2E topology, token/threat-model changes).
+- Never create an ADR file without explicit owner approval. Commit it with the implementing
+  change or as a standalone PR.
+- No ADR is needed for bugfixes, refactors without boundary changes, UI/text changes, test
+  coverage, or routine dependency updates inside approved policies.
+- Statuses: Accepted / Superseded / Deprecated, with `Supersedes` / `Superseded by`
+  cross-references. Numbering is sequential; the next number is the next free one (ADR-005 and
+  beyond).
+- See `docs/decisions/ADR-POLICY.md` and `docs/decisions/templates/ADR-template.md`.
+
 ## Testing and documentation
 
 - Update tests and documentation with any behavior change.
