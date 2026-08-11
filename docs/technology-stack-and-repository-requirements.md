@@ -346,7 +346,9 @@ npm run test:e2e
 
 CI runs on `runs-on: windows-latest` only, matching the Firefox Stable on Windows target. The E2E job uses the same OS and uploads `geckodriver.log`, the temporary Firefox profile, screenshots, and diagnostics exports as artifacts on failure (after redaction). `commitlint` runs as a separate job on `ubuntu-latest` because it only inspects commit text and does not need Windows.
 
-The CI workflow defines three required status checks that branch protection enforces: `quality`, `commitlint`, and `e2e`. Each must pass before a PR can merge.
+The CI workflow defines four required status checks that branch protection enforces: `quality`, `commitlint`, `pr-link`, and `e2e`. Each must pass before a PR can merge.
+
+Every human-authored PR must reference a GitHub issue in its body via a closing keyword (`Closes #N`, `Fixes #N`, `Resolves #N`, or the `... issue #N` spelling) so GitHub auto-closes the issue on merge. The `pr-link` check (ubuntu-latest, runs only on `pull_request`) enforces this; Dependabot PRs are exempt. See `docs/decisions/ADR-003-pr-issue-linkage.md`.
 
 Pin direct dependencies to exact versions in `package.json` (no `^` or `~`) and commit `package-lock.json`. Review every update individually.
 
@@ -428,7 +430,7 @@ The setup phase is complete when the repository delivers a hello-world extension
 1. The AI agent writes code on a feature branch and runs locally: `format:check`, `typecheck`, `lint`, `test:unit`, `test:coverage`, `build`, `test:manifest`, `web-ext:lint`, `npm audit --audit-level=high`. No browser is launched locally.
 2. The agent pushes the branch and opens a PR via `gh pr create`.
 3. CI (`ci.yml`) on `windows-latest` runs the same gates plus `test:e2e` (Selenium + geckodriver + Firefox Stable + temporary profile + hello-world assertions: `badgeText === "ON"`, `options_ui` present, extension loaded without console errors).
-4. `commitlint` (`ci.yml` separate job) validates the PR commits and PR title against Conventional Commits.
+4. `commitlint` (`ci.yml` separate job) validates the PR commits and PR title against Conventional Commits. `pr-link` (`ci.yml` separate job) requires the PR body to reference a GitHub issue via a closing keyword (Dependabot PRs exempt).
 5. The human approves the PR.
 6. The PR squash-merges into `main`; the squashed commit message is the Conventional Commit message.
 7. release-please opens a release PR with a bumped version and `CHANGELOG.md` diff.
@@ -457,10 +459,10 @@ The setup phase executes the following steps in order. Each step depends on the 
 12. `tests/unit/manifest-contract.test.ts`: validates `dist/manifest.json` against the contract (MV2, gecko.id, permissions allowlist exact match, no forbidden permissions, no `localhost`/`127.0.0.1`/`*.test` in `host_permissions`, `options_ui` present, `background` present, `content_scripts.matches` HTTPS-only if present).
 13. `tests/e2e/hello-world.e2e.ts`: Selenium + geckodriver + Firefox Stable temp profile. Loads built `dist/`. Asserts `badgeText === "ON"`, no console errors, `options_ui` exists. Retries flaky runs at most twice. Uploads artifacts on failure.
 14. `web-ext:lint` passes on the built artifact.
-15. `.github/workflows/ci.yml` (`quality`, `commitlint`, `e2e` jobs), `.github/workflows/release.yml` (release-please), `.github/workflows/release-assets.yml` (build + upload zip on `release: published`), `.github/dependabot.yml` (npm weekly + github-actions weekly).
+15. `.github/workflows/ci.yml` (`quality`, `commitlint`, `pr-link`, `e2e` jobs), `.github/workflows/release.yml` (release-please), `.github/workflows/release-assets.yml` (build + upload zip on `release: published`), `.github/dependabot.yml` (npm weekly + github-actions weekly).
 16. Local final dry-run: `format:check && typecheck && lint && test:coverage && build && test:manifest && web-ext:lint && npm audit --audit-level=high && test:e2e`.
 17. `gh repo create lxfactorl/hashway --public --source=. --remote=origin --description="..."` and push `main`.
-18. Branch protection on `main`: required reviews = 1, required status checks = `quality`, `commitlint`, `e2e`, `enforce_admins: false`.
+18. Branch protection on `main`: required reviews = 1, required status checks = `quality`, `commitlint`, `pr-link`, `e2e`, `enforce_admins: false`.
 19. SHA-pin all `uses:` in workflows to full commit SHAs (via `gh api repos/<owner>/<repo>/git/refs/tags/<tag>`).
 20. Push setup commits (Conventional Commit messages), open the setup PR or push directly to `main` before branch protection is active; then enable branch protection.
 21. Verify with `gh run list` that the CI run including E2E is green.
