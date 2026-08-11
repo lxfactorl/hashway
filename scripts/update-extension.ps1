@@ -28,12 +28,15 @@ function Load-LocalEnv {
 
 function Get-GhReleaseJson {
     param([string]$Arg)
+    $headers = $null
     if ($env:GITHUB_TOKEN) {
         $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
-        $uri = "https://api.github.com/repos/$repo/releases/$Arg"
+    }
+    $uri = "https://api.github.com/repos/$repo/releases/$Arg"
+    if ($headers) {
         return Invoke-RestMethod -Uri $uri -Headers $headers
     }
-    $out = gh release view $Arg --repo $repo --json tagName,assets 2>&1
+    $out = gh api "repos/$repo/releases/$Arg" 2>&1
     if ($LASTEXITCODE -ne 0) { throw "gh failed: $out" }
     return ($out | ConvertFrom-Json)
 }
