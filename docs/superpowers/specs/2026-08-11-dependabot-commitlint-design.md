@@ -51,13 +51,14 @@ Job `commitlint` (lines 31-37): add the `if` condition shown above to the
 
 ### `docs/technology-stack-and-repository-requirements.md`
 
-- Line ~224: document that commitlint skips PRs authored by `dependabot[bot]` (auto-generated long
-  commit body lines) and keeps enforcement for human PRs.
-- Update the commitlint mentions (~lines 341/343/416) if they imply unconditional execution.
+- Line ~224 (Conventional Commits enforcement paragraph): add that commitlint skips PRs authored by
+  `dependabot[bot]` (auto-generated long commit body lines) and keeps enforcement for human PRs.
+- Lines ~341/343/416 (job description and required-checks list): remain accurate and are **not**
+  changed — they describe the job and required check names, which do not change.
 
 ### `AGENTS.md`
 
-- Line 72: note the Dependabot exception next to the Conventional Commits statement.
+- Line 72: add the Dependabot exception next to the Conventional Commits statement.
 
 ## Verification
 
