@@ -134,6 +134,7 @@ jobs:
             gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels/needs-review" 2>$null
             if ($LASTEXITCODE -ne 0) { throw "failed to remove needs-review label" }
           }
+          exit 0
 
       - name: Enable auto-merge
         if: needs.triage.outputs.verdict == 'auto-merge'
