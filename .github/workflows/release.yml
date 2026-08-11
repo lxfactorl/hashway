@@ -45,6 +45,15 @@ jobs:
             --api-key $env:AMO_API_KEY `
             --api-secret $env:AMO_API_SECRET `
             --artifacts-dir web-ext-artifacts
+      - name: Locate signed xpi
+        if: ${{ secrets.AMO_API_KEY != '' && secrets.AMO_API_SECRET != '' }}
+        id: xpi
+        shell: pwsh
+        run: |
+          $xpi = Get-ChildItem -Path "web-ext-artifacts" -Filter "*.xpi" | Select-Object -First 1
+          if (-not $xpi) { throw "No signed xpi found in web-ext-artifacts" }
+          Write-Output "path=$($xpi.FullName)"
+          Write-Output "name=$($xpi.Name)"
       - name: Upload zip asset
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
@@ -61,6 +70,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-please.outputs.upload_url }}
-          asset_path: web-ext-artifacts/hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
-          asset_name: hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
+          asset_path: ${{ steps.xpi.outputs.path }}
+          asset_name: ${{ steps.xpi.outputs.name }}
           asset_content_type: application/x-xpinstall
