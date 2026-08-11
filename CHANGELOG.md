@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/lxfactorl/hashway/compare/v0.2.1...v0.2.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* checkout repo in act job so gh can resolve the repository ([#39](https://github.com/lxfactorl/hashway/issues/39)) ([91cc05a](https://github.com/lxfactorl/hashway/commit/91cc05a2d8b52e99525eceb038aa459c9b314350))
+* correct dependabot triage output names and label idempotency ([#37](https://github.com/lxfactorl/hashway/issues/37)) ([ee3440a](https://github.com/lxfactorl/hashway/commit/ee3440af8e19ca28f76e9c05e569117106a11960))
+
 ## [0.2.1](https://github.com/lxfactorl/hashway/compare/v0.2.0...v0.2.1) (2026-08-11)
 
 
