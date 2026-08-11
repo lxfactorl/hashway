@@ -2,8 +2,11 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   srcDir: "src",
+  browser: "firefox",
+  manifestVersion: 2,
+  outDir: "dist",
+  outDirTemplate: ".",
   manifest: {
-    manifest_version: 2,
     name: "Hashway",
     short_name: "Hashway",
     version: "0.1.0",
@@ -15,6 +18,9 @@ export default defineConfig({
       gecko: {
         id: "hashway@hashway.local",
         strict_min_version: "115.0",
+        data_collection_permissions: {
+          required: ["none"],
+        },
       },
     },
     permissions: [
