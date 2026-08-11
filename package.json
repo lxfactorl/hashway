@@ -21,7 +21,8 @@
     "build": "wxt build",
     "test:manifest": "vitest run tests/unit/manifest-contract.test.ts",
     "web-ext:lint": "web-ext lint --source-dir dist",
-    "test:e2e": "vitest run tests/e2e"
+    "test:e2e": "vitest run tests/e2e",
+    "update:extension": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-extension.ps1"
   },
   "devDependencies": {
     "wxt": "0.21.3",

@@ -29,3 +29,6 @@ coverage/
 
 # Worktrees
 .worktrees/
+
+# Superpowers SDD workspace
+.superpowers/
