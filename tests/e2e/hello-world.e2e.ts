@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Builder } from "selenium-webdriver";
 import { Options as FirefoxOptions, ServiceBuilder } from "selenium-webdriver/firefox.js";
+import { Zip } from "selenium-webdriver/io/zip.js";
 import { download as downloadGeckodriver } from "geckodriver";
-import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -11,13 +12,15 @@ const manifestPath = join(distDir, "manifest.json");
 
 describe("hello-world E2E", () => {
   let tempProfile: string;
+  let tempDir: string;
 
   beforeAll(() => {
-    tempProfile = mkdtempSync(join(tmpdir(), "hashway-e2e-"));
+    tempDir = mkdtempSync(join(tmpdir(), "hashway-e2e-"));
+    tempProfile = join(tempDir, "profile");
   });
 
   afterAll(() => {
-    rmSync(tempProfile, { recursive: true, force: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("dist/manifest.json is Firefox MV2 with browser_action and options_ui", () => {
@@ -41,7 +44,14 @@ describe("hello-world E2E", () => {
     options.addArguments("--headless");
     options.setProfile(tempProfile);
     options.setPreference("extensions.autoDisableScopes", 0);
-    options.addExtensions(distDir);
+
+    const zip = new Zip();
+    await zip.addDir(distDir);
+    const buf = await zip.toBuffer("DEFLATE");
+    const extensionPath = join(tempDir, "hashway.zip");
+    writeFileSync(extensionPath, buf);
+    options.addExtensions(extensionPath);
+
     const driver = await new Builder()
       .forBrowser("firefox")
       .setFirefoxService(service)
