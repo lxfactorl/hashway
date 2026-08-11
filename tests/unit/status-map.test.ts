@@ -45,6 +45,14 @@ describe("mapAddMagnetResult", () => {
     const o = mapAddMagnetResult(403, undefined);
     if (o.kind === "failed") expect(o.error).toBe("provider_permanent");
   });
+  it("400 -> provider_permanent (bad request)", () => {
+    const o = mapAddMagnetResult(400, undefined);
+    expect(o.kind).toBe("failed");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_permanent");
+      expect(o.message).toBe("Bad request");
+    }
+  });
   it("500 -> provider_transient fallback", () => {
     const o = mapAddMagnetResult(500, undefined);
     expect(o.kind).toBe("failed");
@@ -76,9 +84,49 @@ describe("mapSelectFilesResult", () => {
   it("31 (already done) -> accepted", () => {
     expect(mapSelectFilesResult(200, 31).kind).toBe("accepted");
   });
+  it("error 8 -> provider_auth", () => {
+    const o = mapSelectFilesResult(200, 8);
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_auth");
+      expect(o.message).toBe("Invalid Real-Debrid token");
+    }
+  });
   it("401 -> provider_auth", () => {
     const o = mapSelectFilesResult(401, undefined);
-    if (o.kind === "failed") expect(o.error).toBe("provider_auth");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_auth");
+      expect(o.message).toBe("Invalid Real-Debrid token");
+    }
+  });
+  it("403 -> provider_permanent", () => {
+    const o = mapSelectFilesResult(403, undefined);
+    expect(o.kind).toBe("failed");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_permanent");
+      expect(o.message).toBe("RD error 403");
+    }
+  });
+  it("400 -> provider_permanent", () => {
+    const o = mapSelectFilesResult(400, undefined);
+    expect(o.kind).toBe("failed");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_permanent");
+      expect(o.message).toBe("RD error 400");
+    }
+  });
+  it("429 -> provider_transient (rate limited)", () => {
+    const o = mapSelectFilesResult(429, undefined);
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_transient");
+      expect(o.message).toBe("Rate limited");
+    }
+  });
+  it("error 34 -> provider_transient (rate limited)", () => {
+    const o = mapSelectFilesResult(200, 34);
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_transient");
+      expect(o.message).toBe("Rate limited");
+    }
   });
   it("503 -> provider_transient", () => {
     const o = mapSelectFilesResult(503, undefined);
@@ -87,10 +135,33 @@ describe("mapSelectFilesResult", () => {
       expect(o.message).toBe("RD unavailable");
     }
   });
+  it("error 25 -> provider_transient", () => {
+    const o = mapSelectFilesResult(200, 25);
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_transient");
+      expect(o.message).toBe("RD unavailable");
+    }
+  });
+  it("500 -> provider_transient fallback", () => {
+    const o = mapSelectFilesResult(500, undefined);
+    expect(o.kind).toBe("failed");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("provider_transient");
+      expect(o.message).toBe("RD error 500");
+    }
+  });
+  it("418 -> provider_permanent fallback", () => {
+    const o = mapSelectFilesResult(418, undefined);
+    expect(o.kind).toBe("failed");
+    if (o.kind === "failed") expect(o.error).toBe("provider_permanent");
+  });
   it("200, no error code -> internal fallback", () => {
     const o = mapSelectFilesResult(200, undefined);
     expect(o.kind).toBe("failed");
-    if (o.kind === "failed") expect(o.error).toBe("internal");
+    if (o.kind === "failed") {
+      expect(o.error).toBe("internal");
+      expect(o.message).toBe("Unexpected status 200");
+    }
   });
 });
 
