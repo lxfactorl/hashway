@@ -40,4 +40,31 @@ See `docs/technology-stack-and-repository-requirements.md` for the approved base
 
 ## Automated release flow
 
-(Setup phase — described in detail once the release pipeline lands.)
+Every change reaches Firefox through: feature branch → PR → CI (`quality` + `commitlint` + `e2e`
+on `windows-latest`) → human approval → squash-merge to `main`. release-please opens a release PR
+with a bumped version and `CHANGELOG.md` diff. On its approval and merge, a git tag `vX.Y.Z` and
+GitHub Release `vX.Y.Z` are created. `release-assets.yml` builds and uploads
+`hashway-vX.Y.Z.zip` as a Release asset. Download the zip and load it in Firefox via
+`about:debugging` → Load Temporary Add-on.
+
+## Local verification
+
+Run these agent-side gates before any PR:
+
+```bash
+npm run format:check
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run test:coverage
+npm run build
+npm run test:manifest
+npm run web-ext:lint
+npm audit --audit-level=critical
+```
+
+`npm audit --audit-level=critical` is used instead of `--audit-level=high` because the transitive
+dev-only dependency `image-size` (via `web-ext` → `addons-linter`) has a known high-severity DoS
+advisory with no patched version. See `docs/decisions/ADR-001-wxt-firefox-mv2.md`.
+
+`npm run test:e2e` runs only in CI on `windows-latest`; it is not executed locally.
