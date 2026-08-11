@@ -317,7 +317,7 @@ Documentation is split between what the setup phase must deliver and what is mai
 - `docs/security.md`: threat model, permissions, token handling, magnet sanitization, redirect policy, and logging redaction.
 - `docs/testing.md`: unit, property, fake-service, WebDriver, manual, and CI test procedures.
 - `docs/diagnostics.md`: event schema, redaction rules, byte budget, export format, and failure artifacts.
-- `docs/decisions/ADR-*.md` (beyond ADR-001): major choices such as token storage, retry behavior, and Firefox E2E topology, written when the decision is actually made.
+- `docs/decisions/ADR-*.md`: architecture decisions and baseline deviations, created per the ADR policy (`docs/decisions/ADR-POLICY.md`).
 
 ### Deferred Documentation
 
