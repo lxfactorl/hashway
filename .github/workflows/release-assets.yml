@@ -1,0 +1,31 @@
+name: Release Assets
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-upload:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Zip dist
+        run: Compress-Archive -Path dist/* -DestinationPath hashway-v${{ github.event.release.tag_name }}.zip
+      - name: Upload asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: hashway-v${{ github.event.release.tag_name }}.zip
+          asset_name: hashway-v${{ github.event.release.tag_name }}.zip
+          asset_content_type: application/zip
