@@ -5,6 +5,12 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      # ADR-004: typescript-eslint (latest 8.67.0) peer-requires typescript <6.1.0.
+      # Hold TS on 5.x until typescript-eslint accepts >=6.1.0. Revert this ignore
+      # in the same PR that bumps typescript-eslint to a TS-7-compatible release.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
