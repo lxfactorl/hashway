@@ -43,6 +43,15 @@ WXT-specific notes recorded for future maintainers:
   for extensions submitted to AMO from Nov 3, 2025. Hashway collects no data. Firefox < 140
   ignores this key, producing two `web-ext lint` warnings (0 errors) that are expected and safe.
 
+### Setup-phase coverage note
+
+`vitest.config.ts` sets `coverage.include: ["src/**/*.{ts,tsx}"]` and excludes
+`src/entrypoints/**` from the coverage report. In the setup phase `src/` contains only the two
+entrypoints (background + options) and empty layer directories, so the coverage run reports
+`0/0 (Unknown%)` and exits 0. The 90/85 thresholds begin to apply once feature-phase code exists
+under `src/domain`, `src/application`, `src/ports`, or `src/adapters`. Do not add per-file
+coverage hacks or threshold relaxations during the setup phase.
+
 ### 2. Node 25 instead of Node 24 LTS (approved deviation)
 
 The local machine has only Node 25.3.0 and no version manager (nvm/fnm absent). Pinning to Node 24

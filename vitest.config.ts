@@ -13,13 +13,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: [
-      "tests/unit/**/*.test.ts",
-      "tests/property/**/*.test.ts",
-      "tests/e2e/**/*.e2e.ts",
-    ],
+    include: ["tests/unit/**/*.test.ts", "tests/property/**/*.test.ts", "tests/e2e/**/*.e2e.ts"],
     coverage: {
       provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
       thresholds: {
@@ -33,6 +30,7 @@ export default defineConfig({
         ".wxt/**",
         "node_modules/**",
         "tests/**",
+        "src/entrypoints/**",
         "wxt.config.ts",
         "vitest.config.ts",
         "eslint.config.js",

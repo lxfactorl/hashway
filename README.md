@@ -16,17 +16,17 @@ npm ci
 
 ## Test commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run format:check` | Prettier check (warnings fail CI) |
-| `npm run typecheck` | TypeScript strict type check |
-| `npm run lint` | ESLint with layer-boundary enforcement |
-| `npm run test:unit` | Unit tests (Vitest) |
-| `npm run test:coverage` | Unit tests with coverage thresholds |
-| `npm run build` | WXT MV2 build |
-| `npm run test:manifest` | Manifest contract test |
-| `npm run web-ext:lint` | web-ext lint on built `dist/` |
-| `npm run test:e2e` | E2E (Selenium + geckodriver, CI-only, `windows-latest`) |
+| Command                 | Purpose                                                 |
+| ----------------------- | ------------------------------------------------------- |
+| `npm run format:check`  | Prettier check (warnings fail CI)                       |
+| `npm run typecheck`     | TypeScript strict type check                            |
+| `npm run lint`          | ESLint with layer-boundary enforcement                  |
+| `npm run test:unit`     | Unit tests (Vitest)                                     |
+| `npm run test:coverage` | Unit tests with coverage thresholds                     |
+| `npm run build`         | WXT MV2 build                                           |
+| `npm run test:manifest` | Manifest contract test                                  |
+| `npm run web-ext:lint`  | web-ext lint on built `dist/`                           |
+| `npm run test:e2e`      | E2E (Selenium + geckodriver, CI-only, `windows-latest`) |
 
 `npm run test:e2e` runs only in CI on `windows-latest`. It is not executed locally.
 

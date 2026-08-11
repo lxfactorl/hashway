@@ -42,7 +42,11 @@ describe("hello-world E2E", () => {
     const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
     try {
       await driver.get("about:blank");
-      const logs = await driver.manage().logs().get("browser").catch(() => []);
+      const logs = await driver
+        .manage()
+        .logs()
+        .get("browser")
+        .catch(() => []);
       const errors = logs.filter((l) => l.level.name === "SEVERE");
       expect(errors).toHaveLength(0);
     } finally {

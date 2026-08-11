@@ -7,3 +7,5 @@ coverage/
 package-lock.json
 geckodriver.log
 docs/superpowers/
+docs/technology-stack-and-repository-requirements.md
+opencode.json
