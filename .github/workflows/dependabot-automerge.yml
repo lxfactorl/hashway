@@ -87,9 +87,9 @@ jobs:
           $marker = "## :robot: Dependabot triage"
           $verdict = "${{ needs.triage.outputs.verdict }}"
           $depNames = "${{ needs.triage.outputs.dependency_names }}"
-          $ecosystem = "${{ needs.triage.outputs.package-ecosystem }}"
-          $updateType = "${{ needs.triage.outputs.update-type }}"
-          $depType = "${{ needs.triage.outputs.dependency-type }}"
+          $ecosystem = "${{ needs.triage.outputs.ecosystem }}"
+          $updateType = "${{ needs.triage.outputs.update_type }}"
+          $depType = "${{ needs.triage.outputs.dependency_type }}"
           $risk = if ($verdict -eq "needs-review") { "high" } else { "low" }
           $body = @(
             $marker
@@ -113,6 +113,8 @@ jobs:
         shell: pwsh
         run: |
           gh label create needs-review --color "fbca04" --description "Requires human review" 2>$null
+          $labelExists = gh label list --json name --jq '.[] | select(.name == "needs-review")' 2>$null
+          if (-not $labelExists) { throw "needs-review label could not be created" }
 
       - name: Apply needs-review label
         if: needs.triage.outputs.verdict == 'needs-review'
