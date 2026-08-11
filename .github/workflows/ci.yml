@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR references an issue
-        if: github.actor != 'dependabot[bot]'
+        if: github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'release-please--')
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
