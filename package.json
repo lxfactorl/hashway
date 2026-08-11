@@ -38,6 +38,6 @@
     "selenium-webdriver": "4.46.0",
     "@types/selenium-webdriver": "4.35.6",
     "@types/chrome": "0.2.5",
-    "geckodriver": "4.5.0"
+    "geckodriver": "6.1.1"
   }
 }
