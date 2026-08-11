@@ -6,6 +6,9 @@ describe("redactUrl", () => {
   it("strips query and fragment", () => {
     expect(redactUrl("https://t.example.com/a?b=1&passkey=Z#c")).toBe("https://t.example.com/a");
   });
+  it("invalid URL yields the placeholder", () => {
+    expect(redactUrl("not a url")).toBe("<invalid url>");
+  });
 });
 
 describe("redactHeaders", () => {
@@ -31,5 +34,8 @@ describe("sanitizeEvent", () => {
     };
     const out = sanitizeEvent(e) as { magnet: string };
     expect(out.magnet).toBe("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Hi");
+  });
+  it("recurses arrays, dropping tokens inside elements", () => {
+    expect(sanitizeEvent({ list: [{ token: "x" }, ["a"]] })).toEqual({ list: [{}, ["a"]] });
   });
 });
