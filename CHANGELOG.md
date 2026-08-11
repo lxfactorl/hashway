@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/lxfactorl/hashway/compare/v0.1.0...v0.2.0) (2026-08-11)
+
+
+### Features
+
+* AMO CI-signing and local extension updater ([#26](https://github.com/lxfactorl/hashway/issues/26)) ([8a53fe2](https://github.com/lxfactorl/hashway/commit/8a53fe281463a395b5905d0becd5e55174c96ddd))
+
+
+### Docs
+
+* add Dependabot automation implementation plan ([b401bc1](https://github.com/lxfactorl/hashway/commit/b401bc1cd183135d42f5a2a035e4b8ee334b2209))
+
 ## 0.1.0 (2026-08-11)
 
 
