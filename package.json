@@ -37,7 +37,7 @@
     "web-ext": "10.6.0",
     "selenium-webdriver": "4.25.0",
     "@types/selenium-webdriver": "4.35.6",
-    "@types/chrome": "0.0.287",
+    "@types/chrome": "0.2.5",
     "geckodriver": "4.5.0"
   }
 }
