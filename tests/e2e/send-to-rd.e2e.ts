@@ -187,7 +187,18 @@ describe("send-to-rd E2E", () => {
           .setFirefoxOptions(options)
           .build();
 
-        await driver.get(OPTIONS_URL);
+        await driver.get("about:blank");
+        // geckodriver rejects top-level navigation to moz-extension:// URLs
+        // (UnsupportedOperationError), so open the options page via window.open
+        // and switch to the new tab instead.
+        await driver.executeScript("window.open(arguments[0], '_blank');", OPTIONS_URL);
+        await driver.wait(
+          async () => (await driver.getAllWindowHandles()).length >= 2,
+          30000,
+          "options page tab did not open",
+        );
+        const handles = await driver.getAllWindowHandles();
+        await driver.switchTo().window(handles[handles.length - 1] ?? "");
         await waitForRuntime(driver);
 
         const setup = await sendTestMessage(driver, {
