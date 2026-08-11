@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2](https://github.com/lxfactorl/hashway/compare/v0.2.1...v0.2.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* checkout repo in act job so gh can resolve the repository ([#39](https://github.com/lxfactorl/hashway/issues/39)) ([91cc05a](https://github.com/lxfactorl/hashway/commit/91cc05a2d8b52e99525eceb038aa459c9b314350))
+* correct dependabot triage output names and label idempotency ([#37](https://github.com/lxfactorl/hashway/issues/37)) ([ee3440a](https://github.com/lxfactorl/hashway/commit/ee3440af8e19ca28f76e9c05e569117106a11960))
+* exit 0 after label removal check to avoid stray exit code ([#43](https://github.com/lxfactorl/hashway/issues/43)) ([4c599db](https://github.com/lxfactorl/hashway/commit/4c599dbe11a3cd89e69210a1f7ecf19610ead684))
+* make needs-review label removal idempotent ([#41](https://github.com/lxfactorl/hashway/issues/41)) ([fffe99f](https://github.com/lxfactorl/hashway/commit/fffe99f4c25ee31ea581413de1f624c906fb41e4))
+
+
+### Docs
+
+* align documentation with current CI/CD and release pipeline ([#44](https://github.com/lxfactorl/hashway/issues/44)) ([773aab1](https://github.com/lxfactorl/hashway/commit/773aab1c9d8b208242664844bd1bb365b50fcc48))
+* hold TypeScript on 5.x until typescript-eslint supports TS 7 (ADR-004) ([#51](https://github.com/lxfactorl/hashway/issues/51)) ([9762595](https://github.com/lxfactorl/hashway/commit/976259594e3c3d6dbc9892529f226949c838a060)), closes [#50](https://github.com/lxfactorl/hashway/issues/50)
+
 ## [0.2.1](https://github.com/lxfactorl/hashway/compare/v0.2.0...v0.2.1) (2026-08-11)
 
 
