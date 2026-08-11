@@ -158,12 +158,7 @@ export default tseslint.config(
               message: "Storage/diagnostics adapters must not import the Real-Debrid adapter.",
             },
           ],
-          patterns: [
-            "@adapters/firefox*",
-            "@adapters/real-debrid*",
-            "@adapters/storage*",
-            "@adapters/diagnostics*",
-          ],
+          patterns: ["@adapters/firefox*", "@adapters/real-debrid*"],
         },
       ],
     },

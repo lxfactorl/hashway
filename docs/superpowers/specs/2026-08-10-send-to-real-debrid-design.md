@@ -225,7 +225,7 @@ tests/
 - `src/ports/**`: no `webextension-polyfill`, `wxt`, or any concrete adapter. Only abstractions.
 - `src/adapters/firefox/**`: may import `wxt`, `@ports/*`, `@domain/*`. May NOT import `@adapters/real-debrid/*`.
 - `src/adapters/real-debrid/**`: may NOT import `@adapters/firefox/*`. Depends on `@ports/*` and `@domain/*`.
-- `src/adapters/storage/**` and `src/adapters/diagnostics/**`: depend only on `@ports/*` and `@domain/*`.
+- `src/adapters/storage/**` and `src/adapters/diagnostics/**`: may import `@ports/*`, `@domain/*`, and sibling storage/diagnostics adapters (`@adapters/storage/versioned-storage`, `@adapters/diagnostics/redaction`, `@adapters/diagnostics/ring-buffer`). May NOT import `@adapters/firefox/*` or `@adapters/real-debrid/*`. The diagnostics ring buffer depends on the storage adapter and the redaction helper; the export helper depends on the ring buffer.
 - `src/entrypoints/**`: may import anything. This is the last mile that wires adapters to application use cases.
 
 ## 8. Verification Steps (implementation-time, not blocking spec)
