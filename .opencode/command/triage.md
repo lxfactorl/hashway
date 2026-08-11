@@ -18,6 +18,7 @@ You are helping the user triage the open GitHub issues of this repository.
 3. Recommend the single "next" issue to work on, with a 1–2 line justification in English (label priority, recency, overlap between issues). Mark it clearly as `⭐ Recommendation`.
 
 4. Ask the user to choose via the `question` tool, single selection:
+
    - One option: the recommended issue.
    - One option per remaining issue (by number and short title).
    - One option: "None / skip".
