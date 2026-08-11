@@ -58,16 +58,13 @@ describe("dependabot verdict", () => {
   });
 
   it("flags major bump of any ecosystem", () => {
-    for (const eco of ["npm", "github-actions"]) {
-      void eco;
-      expect(
-        runVerdict({
-          updateType: "version-update:semver-major",
-          mergeableState: "clean",
-          auditExit: 0,
-        }),
-      ).toBe("needs-review");
-    }
+    expect(
+      runVerdict({
+        updateType: "version-update:semver-major",
+        mergeableState: "clean",
+        auditExit: 0,
+      }),
+    ).toBe("needs-review");
   });
 
   it("flags dirty (merge conflict) even for minor bump", () => {
