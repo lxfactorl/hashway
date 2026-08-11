@@ -81,6 +81,9 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
+      - name: Checkout default branch (trusted code)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
       - name: Post or update triage comment
         shell: pwsh
         run: |
