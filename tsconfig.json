@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["src/**/*.ts", "wxt.config.ts", "eslint.config.js", "vitest.config.ts"],
-  "exclude": ["node_modules", "dist", ".wxt", "tests"]
+  "include": [".wxt/wxt.d.ts", "src/**/*.ts", "wxt.config.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
 }

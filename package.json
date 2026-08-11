@@ -12,8 +12,8 @@
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "lint": "wxt prepare && eslint . --max-warnings=0",
     "test": "vitest run",
     "test:unit": "vitest run --dir tests/unit",
     "test:property": "vitest run --dir tests/property",

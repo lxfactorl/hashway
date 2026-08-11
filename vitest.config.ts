@@ -1,8 +1,6 @@
 import { defineConfig } from "vitest/config";
-import coverage from "@vitest/coverage-v8";
 
 export default defineConfig({
-  plugins: [coverage()],
   resolve: {
     alias: {
       "@domain": "/src/domain",
