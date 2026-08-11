@@ -21,7 +21,7 @@ jobs:
       dependency_type: ${{ steps.metadata.outputs.dependency-type }}
     steps:
       - name: Checkout default branch (trusted code)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Fetch Dependabot metadata
         id: metadata
@@ -31,7 +31,7 @@ jobs:
 
       - name: Checkout PR head for audit
         if: steps.metadata.outputs.package-ecosystem == 'npm'
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr-head
@@ -82,7 +82,7 @@ jobs:
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
       - name: Checkout default branch (trusted code)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Post or update triage comment
         shell: pwsh
