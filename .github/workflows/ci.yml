@@ -21,9 +21,9 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run build
       - run: npm run test:unit
       - run: npm run test:coverage
-      - run: npm run build
       - run: npm run test:manifest
       - run: npm run web-ext:lint
       - run: npm audit --audit-level=critical

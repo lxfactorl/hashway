@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Builder } from "selenium-webdriver";
-import { Options as FirefoxOptions } from "selenium-webdriver/firefox.js";
+import { Options as FirefoxOptions, ServiceBuilder } from "selenium-webdriver/firefox.js";
+import { download as downloadGeckodriver } from "geckodriver";
 import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -34,12 +35,18 @@ describe("hello-world E2E", () => {
   });
 
   it("loads the built extension in headless Firefox without console errors", async () => {
+    const geckodriverPath = await downloadGeckodriver();
+    const service = new ServiceBuilder(geckodriverPath);
     const options = new FirefoxOptions();
     options.addArguments("--headless");
     options.setProfile(tempProfile);
     options.setPreference("extensions.autoDisableScopes", 0);
     options.addExtensions(distDir);
-    const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
+    const driver = await new Builder()
+      .forBrowser("firefox")
+      .setFirefoxService(service)
+      .setFirefoxOptions(options)
+      .build();
     try {
       await driver.get("about:blank");
       const logs = await driver
@@ -52,5 +59,5 @@ describe("hello-world E2E", () => {
     } finally {
       await driver.quit();
     }
-  }, 60000);
+  }, 120000);
 });
