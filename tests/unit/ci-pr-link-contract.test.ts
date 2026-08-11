@@ -62,7 +62,7 @@ describe("closing keyword matching", () => {
   });
 
   it("matches Closed #N in prose", () => {
-    expect(hasClosingKeyword("This closes #3.")).toBe(true);
+    expect(hasClosingKeyword("This closed #3.")).toBe(true);
   });
 
   it("rejects a bare issue number without a keyword", () => {

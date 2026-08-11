@@ -73,8 +73,8 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
   `dependabot[bot]` PRs are exempt because Dependabot's auto-generated commit bodies exceed
   the default `body-max-line-length` rule).
 - Every PR must reference a GitHub issue via a closing keyword in its body (`Closes #N`,
-  `Fixes #N`, `Resolves #N`, or the `... issue #N` spelling); enforced by the `pr-link` CI
-  check. Dependabot PRs are exempt.
+  `Fixes #N`, `Resolves #N`, or the `... issue #N` spelling (e.g. `Closes issue #N`));
+  enforced by the `pr-link` CI check. Dependabot PRs are exempt.
 - Do not start implementation on `main` without explicit user consent.
 
 ## Testing and documentation
