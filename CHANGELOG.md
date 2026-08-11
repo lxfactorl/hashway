@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/lxfactorl/hashway/compare/v0.2.1...v0.2.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* correct dependabot triage output names and label idempotency ([#37](https://github.com/lxfactorl/hashway/issues/37)) ([ee3440a](https://github.com/lxfactorl/hashway/commit/ee3440af8e19ca28f76e9c05e569117106a11960))
+
 ## [0.2.1](https://github.com/lxfactorl/hashway/compare/v0.2.0...v0.2.1) (2026-08-11)
 
 
