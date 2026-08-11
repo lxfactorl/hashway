@@ -37,6 +37,20 @@ jobs:
       - if: github.actor != 'dependabot[bot]'
         uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed
 
+  pr-link:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR references an issue
+        if: github.actor != 'dependabot[bot]'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$PR_BODY" | grep -Eiqz '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[[:space:]]+(issue[[:space:]]*)?#[0-9]+'; then
+            echo "::error::PR body must reference a GitHub issue with a closing keyword (e.g. 'Closes #23')."
+            exit 1
+          fi
+
   e2e:
     runs-on: windows-latest
     steps:
