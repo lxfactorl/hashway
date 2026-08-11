@@ -129,7 +129,11 @@ jobs:
         if: needs.triage.outputs.verdict == 'auto-merge'
         shell: pwsh
         run: |
-          gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels/needs-review" 2>$null
+          $hasLabel = gh api "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels/needs-review" --jq '.name' 2>$null
+          if ($LASTEXITCODE -eq 0 -and $hasLabel) {
+            gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels/needs-review" 2>$null
+            if ($LASTEXITCODE -ne 0) { throw "failed to remove needs-review label" }
+          }
 
       - name: Enable auto-merge
         if: needs.triage.outputs.verdict == 'auto-merge'
