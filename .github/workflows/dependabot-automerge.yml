@@ -1,0 +1,133 @@
+name: Dependabot Automation
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+      dependency_names: ${{ steps.metadata.outputs.dependency-names }}
+      ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}
+      update_type: ${{ steps.metadata.outputs.update-type }}
+      dependency_type: ${{ steps.metadata.outputs.dependency-type }}
+    steps:
+      - name: Checkout default branch (trusted code)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@15c49302c4a0a37e326ec87971fba5d1e4322d97
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout PR head for audit
+        if: steps.metadata.outputs.package-ecosystem == 'npm'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-head
+
+      - name: npm audit (critical)
+        id: audit
+        if: steps.metadata.outputs.package-ecosystem == 'npm'
+        working-directory: pr-head
+        shell: pwsh
+        run: |
+          npm audit --audit-level=critical
+          if ($LASTEXITCODE -eq 0) {
+            "audit_exit=0" >> $env:GITHUB_OUTPUT
+          } else {
+            "audit_exit=$LASTEXITCODE" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Resolve mergeable state via API
+        id: mergeable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $state = gh api "repos/$($env:GITHUB_REPOSITORY)/pulls/${{ github.event.pull_request.number }}" --jq '.mergeable_state'
+          "mergeable_state=$state" >> $env:GITHUB_OUTPUT
+
+      - name: Compute verdict
+        id: verdict
+        shell: pwsh
+        run: |
+          $auditExit = "${{ steps.audit.outputs.audit_exit }}"
+          if ([string]::IsNullOrWhiteSpace($auditExit)) { $auditExit = "0" }
+          $json = @{
+            updateType     = "${{ steps.metadata.outputs.update-type }}"
+            mergeableState = "${{ steps.mergeable.outputs.mergeable_state }}"
+            auditExit      = [int]$auditExit
+          } | ConvertTo-Json -Compress
+          $verdict = pwsh -NoProfile -File scripts/dependabot-verdict.ps1 -InputJson $json
+          "verdict=$verdict" >> $env:GITHUB_OUTPUT
+
+  act:
+    needs: triage
+    runs-on: ubuntu-latest
+    if: needs.triage.result == 'success'
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+    steps:
+      - name: Post or update triage comment
+        shell: pwsh
+        run: |
+          $marker = "## :robot: Dependabot triage"
+          $verdict = "${{ needs.triage.outputs.verdict }}"
+          $depNames = "${{ needs.triage.outputs.dependency_names }}"
+          $ecosystem = "${{ needs.triage.outputs.package-ecosystem }}"
+          $updateType = "${{ needs.triage.outputs.update-type }}"
+          $depType = "${{ needs.triage.outputs.dependency-type }}"
+          $risk = if ($verdict -eq "needs-review") { "high" } else { "low" }
+          $body = @(
+            $marker
+            ""
+            "- Dependency: $depNames"
+            "- Ecosystem: $ecosystem"
+            "- Update type: $updateType"
+            "- Dependency type: $depType"
+            "- Risk: $risk"
+            "- Verdict: $verdict"
+          ) -join "`n"
+          $comments = gh api "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/comments" --jq '.[] | {id: .id, body: .body}' | ConvertFrom-Json
+          $existing = $comments | Where-Object { $_.body.StartsWith($marker) } | Select-Object -First 1
+          if ($existing) {
+            gh api -X PATCH "repos/$env:GITHUB_REPOSITORY/issues/comments/$($existing.id)" -f body=$body
+          } else {
+            gh api -X POST "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/comments" -f body=$body
+          }
+
+      - name: Ensure needs-review label exists
+        shell: pwsh
+        run: |
+          gh label create needs-review --color "fbca04" --description "Requires human review" 2>$null
+
+      - name: Apply needs-review label
+        if: needs.triage.outputs.verdict == 'needs-review'
+        shell: pwsh
+        run: |
+          gh api -X POST "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels" -f labels[]=needs-review
+
+      - name: Remove needs-review label
+        if: needs.triage.outputs.verdict == 'auto-merge'
+        shell: pwsh
+        run: |
+          gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/labels/needs-review" 2>$null
+
+      - name: Enable auto-merge
+        if: needs.triage.outputs.verdict == 'auto-merge'
+        shell: pwsh
+        run: |
+          gh pr merge $env:PR_NUMBER --auto --squash
