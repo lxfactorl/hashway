@@ -28,6 +28,10 @@ describe("parseTorrent", () => {
   it("rejects malformed bytes", () => {
     expect(() => parseTorrent(new Uint8Array(fx("malformed.torrent")))).toThrow();
   });
+  it("rejects v2-only metadata", () => {
+    const v2 = readFileSync(resolve(process.cwd(), "tests/fixtures/torrents/v2-only.torrent"));
+    expect(() => parseTorrent(new Uint8Array(v2))).toThrow(/v2_rejected|v2/);
+  });
   it("rejects HTML as not_torrent", () => {
     expect(() => parseTorrent(new Uint8Array(Buffer.from("<html>")))).toThrow(
       /not_torrent|torrent/,
