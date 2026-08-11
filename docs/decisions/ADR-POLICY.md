@@ -33,7 +33,7 @@ No ADR is needed for:
 - UI or copy/text changes.
 - Test coverage additions.
 - Routine dependency updates inside approved policies (for example the `npm audit
-  --audit-level=critical` gate in ADR-001, the TypeScript hold in ADR-004, or the Dependabot
+--audit-level=critical` gate in ADR-001, the TypeScript hold in ADR-004, or the Dependabot
   automation policy).
 
 When in doubt, propose an ADR and let the owner decide.
