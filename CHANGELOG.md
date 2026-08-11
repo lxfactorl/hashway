@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/lxfactorl/hashway/compare/v0.2.0...v0.2.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* avoid double-v in release zip asset name ([#33](https://github.com/lxfactorl/hashway/issues/33)) ([df8dad3](https://github.com/lxfactorl/hashway/commit/df8dad3ae31117db52f95fdf504e4920175396b6))
+
 ## [0.2.0](https://github.com/lxfactorl/hashway/compare/v0.1.0...v0.2.0) (2026-08-11)
 
 
