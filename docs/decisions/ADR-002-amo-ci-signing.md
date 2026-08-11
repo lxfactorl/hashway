@@ -21,9 +21,9 @@ Adopt **AMO signing in CI**:
 
 1. `release.yml` job `build-upload` gains a guarded signing step:
    `npx web-ext sign --source-dir dist --channel unlisted --api-key ${{ secrets.AMO_API_KEY }}
-   --api-secret ${{ secrets.AMO_API_SECRET }} --artifacts-dir web-ext-artifacts`.
+--api-secret ${{ secrets.AMO_API_SECRET }} --artifacts-dir web-ext-artifacts`.
    The step runs only when both secrets are present (`if: ${{ secrets.AMO_API_KEY != '' &&
-   secrets.AMO_API_SECRET != '' }}`); otherwise it skips and the Release carries only the unsigned
+secrets.AMO_API_SECRET != '' }}`); otherwise it skips and the Release carries only the unsigned
    zip.
 2. The signed `hashway-v<X.Y.Z>-an+fx.xpi` is uploaded to the same GitHub Release.
 3. A local script `npm run update:extension` (`scripts/update-extension.ps1`) downloads the latest
