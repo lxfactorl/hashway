@@ -1,3 +1,4 @@
+# AMO signing: guarded by job env (secrets cannot appear in if:).
 name: Release
 
 on:
