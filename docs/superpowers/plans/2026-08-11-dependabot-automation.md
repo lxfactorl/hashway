@@ -105,15 +105,13 @@ describe("dependabot verdict", () => {
   });
 
   it("flags major bump of any ecosystem", () => {
-    for (const eco of ["npm", "github-actions"]) {
-      expect(
-        runVerdict({
-          updateType: "version-update:semver-major",
-          mergeableState: "clean",
-          auditExit: 0,
-        }),
-      ).toBe("needs-review");
-    }
+    expect(
+      runVerdict({
+        updateType: "version-update:semver-major",
+        mergeableState: "clean",
+        auditExit: 0,
+      }),
+    ).toBe("needs-review");
   });
 
   it("flags dirty (merge conflict) even for minor bump", () => {
@@ -338,16 +336,16 @@ jobs:
           $updateType = "${{ needs.triage.outputs.update-type }}"
           $depType = "${{ needs.triage.outputs.dependency-type }}"
           $risk = if ($verdict -eq "needs-review") { "high" } else { "low" }
-          $body = @"
-$marker
-
-- Dependency: $depNames
-- Ecosystem: $ecosystem
-- Update type: $updateType
-- Dependency type: $depType
-- Risk: $risk
-- Verdict: $verdict
-"@
+          $body = @(
+            $marker
+            ""
+            "- Dependency: $depNames"
+            "- Ecosystem: $ecosystem"
+            "- Update type: $updateType"
+            "- Dependency type: $depType"
+            "- Risk: $risk"
+            "- Verdict: $verdict"
+          ) -join "`n"
           $comments = gh api "repos/$env:GITHUB_REPOSITORY/issues/$env:PR_NUMBER/comments" --jq '.[] | {id: .id, body: .body}' | ConvertFrom-Json
           $existing = $comments | Where-Object { $_.body.StartsWith($marker) } | Select-Object -First 1
           if ($existing) {

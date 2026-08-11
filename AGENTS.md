@@ -65,6 +65,11 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
 - Do not add arbitrary new dependencies or permissions without justification.
 - Direct dependencies are pinned to exact versions. Review every update.
 - Never run `npx @latest`, `npm audit fix`, or accept unreviewed lockfile changes.
+- Dependabot PRs are triaged automatically by `.github/workflows/dependabot-automerge.yml`:
+  minor/patch updates (npm and GitHub Actions) with green required checks and a clean
+  `npm audit --audit-level=critical` are auto-merged; major bumps, merge conflicts, and audit
+  failures are labeled `needs-review` and require a human decision. Human review still applies to
+  every dependency update that reaches the `needs-review` state.
 
 ## Git and remote operations
 
