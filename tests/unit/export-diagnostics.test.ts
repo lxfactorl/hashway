@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { exportDiagnostics, createRingBuffer } from "@adapters/diagnostics/export";
 import { createVersionedStorage } from "@adapters/storage/versioned-storage";
+import { exportDiagnosticsUseCase } from "@application/export-diagnostics";
 import type { StoragePort } from "@ports/storage";
 import type { DownloadsPort } from "@ports/downloads";
 
@@ -45,5 +46,18 @@ describe("exportDiagnostics", () => {
     const parsed = JSON.parse(saved.json) as { exportedAt?: unknown; events?: unknown[] };
     expect(parsed).toHaveProperty("exportedAt");
     expect(parsed.events).toBeInstanceOf(Array);
+  });
+});
+
+describe("exportDiagnosticsUseCase", () => {
+  it("delegates to the injected export function", async () => {
+    let called = 0;
+    await exportDiagnosticsUseCase({
+      exportFn: () => {
+        called++;
+        return Promise.resolve();
+      },
+    });
+    expect(called).toBe(1);
   });
 });
