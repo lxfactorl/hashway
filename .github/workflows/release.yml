@@ -38,7 +38,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Zip dist
-        run: Compress-Archive -Path dist/* -DestinationPath hashway-v${{ needs.release-please.outputs.tag_name }}.zip
+        run: Compress-Archive -Path dist/* -DestinationPath hashway-${{ needs.release-please.outputs.tag_name }}.zip
       - name: Sign extension (AMO)
         if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
         run: |
@@ -61,8 +61,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-please.outputs.upload_url }}
-          asset_path: hashway-v${{ needs.release-please.outputs.tag_name }}.zip
-          asset_name: hashway-v${{ needs.release-please.outputs.tag_name }}.zip
+          asset_path: hashway-${{ needs.release-please.outputs.tag_name }}.zip
+          asset_name: hashway-${{ needs.release-please.outputs.tag_name }}.zip
           asset_content_type: application/zip
       - name: Upload signed xpi
         if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
