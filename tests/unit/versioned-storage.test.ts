@@ -62,4 +62,21 @@ describe("versioned storage", () => {
     const s = createVersionedStorage(fakeStorage());
     expect(await s.getDiagnostics()).toEqual([]);
   });
+  it("getDiagnostics returns [] for an unparseable stored value", async () => {
+    const storage = fakeStorage();
+    const s = createVersionedStorage(storage);
+    await storage.set(STORAGE_KEYS.diagnostics, { version: 1, events: "nope" });
+    expect(await s.getDiagnostics()).toEqual([]);
+    await storage.set(STORAGE_KEYS.diagnostics, { version: 1 });
+    expect(await s.getDiagnostics()).toEqual([]);
+    await storage.set(STORAGE_KEYS.diagnostics, "garbage");
+    expect(await s.getDiagnostics()).toEqual([]);
+  });
+  it("bytesUsed delegates to the underlying storage", async () => {
+    const storage = fakeStorage();
+    const s = createVersionedStorage(storage);
+    expect(await s.bytesUsed()).toBe(0);
+    await s.setToken("abc");
+    expect(await s.bytesUsed()).toBeGreaterThan(0);
+  });
 });
