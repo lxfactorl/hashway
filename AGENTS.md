@@ -69,7 +69,9 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
 ## Git and remote operations
 
 - Do not push, merge, release, dispatch workflows, or change secrets without explicit approval.
-- Commit messages must follow Conventional Commits (enforced in CI by commitlint; `dependabot[bot]` PRs are exempt because Dependabot's auto-generated commit bodies exceed the default `body-max-line-length` rule).
+- Commit messages must follow Conventional Commits (enforced in CI by commitlint;
+  `dependabot[bot]` PRs are exempt because Dependabot's auto-generated commit bodies exceed
+  the default `body-max-line-length` rule).
 - Do not start implementation on `main` without explicit user consent.
 
 ## Testing and documentation
