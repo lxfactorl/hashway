@@ -3,7 +3,7 @@ import { Builder } from "selenium-webdriver";
 import { Options as FirefoxOptions, ServiceBuilder } from "selenium-webdriver/firefox.js";
 import { Zip } from "selenium-webdriver/io/zip.js";
 import { download as downloadGeckodriver } from "geckodriver";
-import { readFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -17,6 +17,7 @@ describe("hello-world E2E", () => {
   beforeAll(() => {
     tempDir = mkdtempSync(join(tmpdir(), "hashway-e2e-"));
     tempProfile = join(tempDir, "profile");
+    mkdirSync(tempProfile);
   });
 
   afterAll(() => {
