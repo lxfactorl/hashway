@@ -14,7 +14,7 @@ brainstorm session for the chosen one.
 
 A project-scoped opencode command `triage` that:
 
-1. Loads all open GitHub issues of the current repository.
+1. Loads the open GitHub issues of the current repository (up to the first 50).
 2. Shows a short summary for each.
 3. Recommends the single next issue to work on, with a brief justification.
 4. Lets the user pick one issue (or none) via the `question` tool.
