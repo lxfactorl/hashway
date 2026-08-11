@@ -30,12 +30,11 @@ function isFetchTrackerResponse(value: unknown): value is FetchTrackerResponse {
 export function createFirefoxMessaging(): MessagingPort {
   return {
     async fetchTrackerBytes(tabId, url, deadline) {
-      void deadline;
       try {
         const response = await browser.tabs.sendMessage<
           FetchTrackerRequest & { readonly type: "fetchTracker" },
           unknown
-        >(tabId, { type: "fetchTracker", url });
+        >(tabId, { type: "fetchTracker", url, deadline });
         if (isFetchTrackerResponse(response)) return response;
         return { ok: false, reason: "network" };
       } catch {

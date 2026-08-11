@@ -8,6 +8,12 @@ import type { NotificationsPort } from "@ports/notifications";
 import type { MessagingPort } from "@ports/messaging";
 import type { LinkClickIntent } from "@ports/context-menu";
 
+export type LinkKind =
+  | { readonly kind: "magnet_v1" }
+  | { readonly kind: "https_torrent" }
+  | { readonly kind: "http" }
+  | { readonly kind: "unsupported" };
+
 let active = false;
 
 async function withRetry(
@@ -42,6 +48,7 @@ export async function sendTorrent(
     messaging: MessagingPort;
     parser: (bytes: Uint8Array) => ParsedTorrent;
     computeHash: (infoBytes: Uint8Array) => Promise<string>;
+    classify: (linkUrl: string, pageUrl: string) => LinkKind;
   },
   intent: LinkClickIntent,
   deadline: number,
@@ -49,91 +56,99 @@ export async function sendTorrent(
   if (active) return failed("user_input", "Busy");
   active = true;
   try {
-    const { provider, notifications, messaging, parser, computeHash } = deps;
+    const { provider, notifications, messaging, parser, computeHash, classify } = deps;
     const url = intent.linkUrl;
 
     let magnet: string;
     let displayName: string;
 
-    if (url.startsWith("magnet:")) {
-      let sanitized: { readonly infohash: string; readonly dn: string };
-      try {
-        sanitized = sanitizeMagnet(url);
-      } catch {
-        return await notifyFailure(notifications, failed("user_input", "Invalid magnet link"));
-      }
-      magnet = buildMagnet(sanitized.infohash, sanitized.dn);
-      displayName = sanitized.dn;
-    } else if (url.startsWith("https:")) {
-      const fetched = await messaging.fetchTrackerBytes(intent.tabId, url, deadline);
-      if (!fetched.ok) {
-        switch (fetched.reason) {
-          case "session_required":
-            return await notifyFailure(
-              notifications,
-              failed("tracker_auth", "Session required on tracker"),
-            );
-          case "non_torrent":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Not a valid .torrent file"),
-            );
-          case "redirect":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Redirect not allowed"),
-            );
-          case "http_error":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Tracker error"),
-            );
-          case "oversized":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Torrent file too large (max 25 MB)"),
-            );
-          case "network":
-            return await notifyFailure(
-              notifications,
-              failed("provider_transient", "Network error fetching torrent"),
-            );
+    switch (classify(url, intent.pageUrl).kind) {
+      case "magnet_v1": {
+        let sanitized: { readonly infohash: string; readonly dn: string };
+        try {
+          sanitized = sanitizeMagnet(url);
+        } catch {
+          return await notifyFailure(notifications, failed("user_input", "Invalid magnet link"));
         }
+        magnet = buildMagnet(sanitized.infohash, sanitized.dn);
+        displayName = sanitized.dn;
+        break;
       }
-      let parsed: ParsedTorrent;
-      try {
-        parsed = parser(new Uint8Array(fetched.bytes));
-      } catch (e) {
-        if (!(e instanceof BencodeError)) throw e;
-        switch (e.kind) {
-          case "not_torrent":
-          case "malformed":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Not a valid .torrent file"),
-            );
-          case "oversized":
-            return await notifyFailure(
-              notifications,
-              failed("provider_permanent", "Torrent file too large"),
-            );
-          case "v2_rejected":
-            return await notifyFailure(
-              notifications,
-              failed("user_input", "BitTorrent v2 torrents are not supported"),
-            );
+      case "https_torrent": {
+        const fetched = await messaging.fetchTrackerBytes(intent.tabId, url, deadline);
+        if (!fetched.ok) {
+          switch (fetched.reason) {
+            case "session_required":
+              return await notifyFailure(
+                notifications,
+                failed("tracker_auth", "Session required on tracker"),
+              );
+            case "non_torrent":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Not a valid .torrent file"),
+              );
+            case "redirect":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Redirect not allowed"),
+              );
+            case "http_error":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Tracker error"),
+              );
+            case "oversized":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Torrent file too large (max 25 MB)"),
+              );
+            case "network":
+              return await notifyFailure(
+                notifications,
+                failed("provider_transient", "Network error fetching torrent"),
+              );
+          }
         }
+        let parsed: ParsedTorrent;
+        try {
+          parsed = parser(new Uint8Array(fetched.bytes));
+        } catch (e) {
+          if (!(e instanceof BencodeError)) throw e;
+          switch (e.kind) {
+            case "not_torrent":
+            case "malformed":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Not a valid .torrent file"),
+              );
+            case "oversized":
+              return await notifyFailure(
+                notifications,
+                failed("provider_permanent", "Torrent file too large"),
+              );
+            case "v2_rejected":
+              return await notifyFailure(
+                notifications,
+                failed("user_input", "BitTorrent v2 torrents are not supported"),
+              );
+          }
+        }
+        const hash = await computeHash(parsed.infoBytes);
+        magnet = buildMagnet(hash, parsed.name);
+        displayName = parsed.name;
+        break;
       }
-      const hash = await computeHash(parsed.infoBytes);
-      magnet = buildMagnet(hash, parsed.name);
-      displayName = parsed.name;
-    } else if (url.startsWith("http://")) {
-      return await notifyFailure(
-        notifications,
-        failed("user_input", "HTTPS only — tracker page must be secure"),
-      );
-    } else {
-      return await notifyFailure(notifications, failed("user_input", "Unsupported link"));
+      case "http":
+        return await notifyFailure(
+          notifications,
+          failed("user_input", "HTTPS only — tracker page must be secure"),
+        );
+      case "unsupported":
+        return await notifyFailure(
+          notifications,
+          failed("user_input", "Cross-origin link not supported"),
+        );
     }
 
     const addOutcome = await provider.addMagnet({ magnet }, deadline);

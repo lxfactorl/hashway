@@ -9,10 +9,12 @@ function fakeFetch(map: Record<string, { status: number; body?: unknown }>): typ
     if (!key) throw new TypeError("no route");
     const entry = map[key];
     if (!entry) throw new TypeError("no route");
-    return new Response(entry.body ? JSON.stringify(entry.body) : "", {
-      status: entry.status,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Promise.resolve(
+      new Response(entry.body ? JSON.stringify(entry.body) : "", {
+        status: entry.status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   };
 }
 
@@ -103,7 +105,12 @@ describe("RealDebrid client", () => {
   });
   it("addMagnet tolerates a non-JSON body", async () => {
     const f: typeof fetch = () =>
-      new Response("not-json {", { status: 201, headers: { "Content-Type": "application/json" } });
+      Promise.resolve(
+        new Response("not-json {", {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
     expect(out.kind).toBe("accepted");
@@ -111,7 +118,22 @@ describe("RealDebrid client", () => {
   });
   it("addMagnet treats a null body as no error code", async () => {
     const f: typeof fetch = () =>
-      new Response("null", { status: 201, headers: { "Content-Type": "application/json" } });
+      Promise.resolve(
+        new Response("null", { status: 201, headers: { "Content-Type": "application/json" } }),
+      );
+    const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
+    const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
+    expect(out.kind).toBe("accepted");
+    if (out.kind === "accepted") expect(out.id).toBe("");
+  });
+  it("addMagnet treats a null id as the empty-string sentinel", async () => {
+    const f: typeof fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ id: null }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
     expect(out.kind).toBe("accepted");

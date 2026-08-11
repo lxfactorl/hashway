@@ -75,6 +75,9 @@ async function handleClear(): Promise<void> {
   try {
     const out = await clearCredentials({ storage, notifications })();
     setStatus(outcomeMessage(out, "Token cleared"));
+    if (out.kind === "accepted") {
+      tokenInput.value = "";
+    }
   } catch (e) {
     setStatus(errorMessage(e));
   }

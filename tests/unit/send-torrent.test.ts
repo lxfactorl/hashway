@@ -2,10 +2,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { sendTorrent } from "@application/send-torrent";
+import { sendTorrent, type LinkKind } from "@application/send-torrent";
 import { accepted, alreadyActive, failed, unknown, type Outcome } from "@domain/error-taxonomy";
 import { BencodeError, parseTorrent, type ParsedTorrent } from "@domain/bencode";
 import { computeV1InfoHash } from "@domain/infohash";
+import { classifyLink } from "@adapters/firefox/active-tab";
 import type { ProviderPort } from "@ports/provider";
 import type { NotificationsPort, Badge } from "@ports/notifications";
 import type { MessagingPort, FetchTrackerResponse } from "@ports/messaging";
@@ -96,6 +97,7 @@ function makeDeps(
     messaging?: MessagingPort;
     parser?: (bytes: Uint8Array) => ParsedTorrent;
     computeHash?: (infoBytes: Uint8Array) => Promise<string>;
+    classify?: (linkUrl: string, pageUrl: string) => LinkKind;
   } = {},
 ) {
   const provider = opts.provider ?? fakeProvider();
@@ -110,6 +112,7 @@ function makeDeps(
       messaging,
       parser: opts.parser ?? parseTorrent,
       computeHash: opts.computeHash ?? computeV1InfoHash,
+      classify: opts.classify ?? classifyLink,
     },
   };
 }
@@ -168,22 +171,34 @@ describe("sendTorrent link classification", () => {
     expect(provider.addCalls).toHaveLength(0);
   });
 
-  it("unsupported scheme -> Unsupported link failure", async () => {
+  it("unsupported scheme (non-https/non-magnet) -> Cross-origin link not supported failure", async () => {
     const { notifications, deps } = makeDeps();
     const out = await sendTorrent(
       deps,
       intent("ftp://example.com/file.torrent"),
       Date.now() + 30000,
     );
-    expect(out).toEqual(failed("user_input", "Unsupported link"));
-    expectNotified(notifications, "Unsupported link");
+    expect(out).toEqual(failed("user_input", "Cross-origin link not supported"));
+    expectNotified(notifications, "Cross-origin link not supported");
   });
 
-  it("invalid magnet -> Invalid magnet link failure", async () => {
+  it("cross-origin https link -> Cross-origin link not supported, no tracker fetch", async () => {
+    const { provider, notifications, deps } = makeDeps();
+    const out = await sendTorrent(
+      deps,
+      intent("https://cdn.other.com/x.torrent"),
+      Date.now() + 30000,
+    );
+    expect(out).toEqual(failed("user_input", "Cross-origin link not supported"));
+    expectNotified(notifications, "Cross-origin link not supported");
+    expect(provider.addCalls).toHaveLength(0);
+  });
+
+  it("malformed magnet -> classified unsupported -> Cross-origin link not supported", async () => {
     const { notifications, deps } = makeDeps();
     const out = await sendTorrent(deps, intent("magnet:?xt=urn:btih:abc"), Date.now() + 30000);
-    expect(out).toEqual(failed("user_input", "Invalid magnet link"));
-    expectNotified(notifications, "Invalid magnet link");
+    expect(out).toEqual(failed("user_input", "Cross-origin link not supported"));
+    expectNotified(notifications, "Cross-origin link not supported");
   });
 });
 
@@ -242,6 +257,21 @@ describe("sendTorrent https fetch failures", () => {
     const out = await sendTorrent(deps, intent("https://example.com/dl"), Date.now() + 30000);
     expect(out).toEqual(failed("provider_transient", "Network error fetching torrent"));
     expectNotified(notifications, "Network error fetching torrent");
+  });
+
+  it("forwards the action deadline to the tracker fetch", async () => {
+    const forwarded: number[] = [];
+    const messaging: MessagingPort = {
+      fetchTrackerBytes(_tabId, _url, deadline) {
+        forwarded.push(deadline);
+        return Promise.resolve({ ok: true, bytes: fixtureArrayBuffer });
+      },
+    };
+    const { deps } = makeDeps({ messaging });
+    const deadline = Date.now() + 30000;
+    const out = await sendTorrent(deps, intent("https://example.com/x.torrent"), deadline);
+    expect(out).toEqual(accepted({ id: "" }));
+    expect(forwarded).toEqual([deadline]);
   });
 });
 

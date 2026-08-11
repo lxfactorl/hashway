@@ -43,7 +43,8 @@ describe("ring buffer", () => {
     const buf = createRingBuffer(storage, 1 * 1024 * 1024);
     await buf.append({ token: "SECRET", ok: 1 });
     const snap = (await buf.snapshot()) as Array<Record<string, unknown>>;
-    expect(snap[0]).not.toHaveProperty("token");
-    expect(snap[0].ok).toBe(1);
+    const first = snap[0];
+    expect(first).not.toHaveProperty("token");
+    expect(first?.["ok"]).toBe(1);
   });
 });

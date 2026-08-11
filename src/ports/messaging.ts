@@ -1,6 +1,7 @@
 // src/ports/messaging.ts
 export interface FetchTrackerRequest {
   readonly url: string;
+  readonly deadline: number;
 }
 export type FetchTrackerResponse =
   | { readonly ok: true; readonly bytes: ArrayBuffer }

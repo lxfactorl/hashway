@@ -1,4 +1,5 @@
 // src/entrypoints/background.ts
+import { classifyLink } from "@adapters/firefox/active-tab";
 import { createFirefoxContextMenu } from "@adapters/firefox/context-menu";
 import { createFirefoxMessaging } from "@adapters/firefox/messaging";
 import { createFirefoxNotifications } from "@adapters/firefox/notifications";
@@ -83,6 +84,7 @@ export default defineBackground(() => {
             messaging,
             parser: parseTorrent,
             computeHash: computeV1InfoHash,
+            classify: classifyLink,
           },
           intent,
           Date.now() + 30000,
@@ -112,6 +114,7 @@ export default defineBackground(() => {
           messaging,
           parser: parseTorrent,
           computeHash: computeV1InfoHash,
+          classify: classifyLink,
         },
         intent,
         deadline,
@@ -145,7 +148,7 @@ function redactIntent(intent: LinkClickIntent): {
 } {
   return {
     linkUrl: redactUrl(intent.linkUrl),
-    pageUrl: intent.pageUrl,
+    pageUrl: redactUrl(intent.pageUrl),
     tabTitle: intent.tabTitle,
   };
 }

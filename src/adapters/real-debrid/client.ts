@@ -31,7 +31,10 @@ function extractId(body: unknown): string {
   if (typeof body !== "object" || body === null) return "";
   if (!("id" in body)) return "";
   const raw: unknown = body.id;
-  return typeof raw === "string" ? raw : String(raw);
+  if (raw === null) return "";
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number") return String(raw);
+  return "";
 }
 
 function parseBody(text: string): unknown {

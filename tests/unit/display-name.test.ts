@@ -9,6 +9,13 @@ describe("normalizeDisplayName", () => {
   it("removes control characters", () => {
     expect(normalizeDisplayName("a\u0000b\u0007c")).toBe("abc");
   });
+  it("trims trailing whitespace left by removed control characters", () => {
+    expect(normalizeDisplayName("x \u0007")).toBe("x");
+  });
+  it("is idempotent", () => {
+    const once = normalizeDisplayName("  x \u0007  ");
+    expect(normalizeDisplayName(once)).toBe(once);
+  });
   it("collapses internal whitespace runs", () => {
     expect(normalizeDisplayName("The   Matrix\tReloaded")).toBe("The Matrix Reloaded");
   });
