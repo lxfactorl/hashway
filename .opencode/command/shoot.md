@@ -21,24 +21,31 @@ You are helping the user file GitHub issue(s) for problems discovered in the cur
 ## Body template
 
 ## Context
+
 {what was being worked on and where the problem was found — file:line references}
 
 ## Problem
+
 {1-2 sentences describing the problem}
 
 ## Expected behavior
+
 {what should happen instead}
 
 ## Steps to reproduce
+
 {include if applicable, otherwise omit}
 
 ## Severity
+
 {blocker/high/medium/low} — {one-line justification}
 
 ## Suggested fix
+
 {include if you have an idea, otherwise omit}
 
 ## Related
+
 {relevant PRs, commits, or files}
 
 ## Rules
