@@ -360,7 +360,12 @@ Additional rules:
 - A PR title convention is enforced: `feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`, `build:`, `ci:`. `chore(deps):` Dependabot PRs are grouped under "Misc" and hidden from the user-visible changelog sections.
 - When the release PR is approved and merged, release-please creates a git tag `vX.Y.Z` and a GitHub Release `vX.Y.Z`.
 - `release-assets.yml` triggers on `release: published`, runs `npm ci`, `wxt build`, zips the built `dist` output into `hashway-vX.Y.Z.zip`, and uploads the zip as a GitHub Release asset.
-- The developer installs a new version by downloading the zip from the GitHub Release and loading it in Firefox via `about:debugging` → Load Temporary Add-on. No AMO signing is performed in the first release.
+- The developer installs a new version by downloading the zip from the GitHub Release and loading
+  it in Firefox via `about:debugging` → Load Temporary Add-on. From the first release that lands
+  after CI signing is enabled, the Release also carries a signed `hashway-vX.Y.Z-an+fx.xpi`
+  (AMO, `--channel unlisted`) for permanent installation via `npm run update:extension`, which
+  writes the xpi to `<profile>/extensions/hashway@hashway.local.xpi`. AMO public/listed
+  distribution and update channels remain deferred.
 
 ## MCP and Agent Workflow
 
@@ -376,7 +381,11 @@ The AI agent (OpenCode) is responsible for everything up to, but not including, 
 - The agent does **not** run Firefox, Selenium, or geckodriver locally. Browser E2E runs only in CI on `windows-latest`.
 - After pushing a branch, the agent opens a PR via `gh pr create`, watches CI with `gh pr checks --watch`, and reads the CI log with `gh run view <id> --log` to triage failures.
 - After human approval, the agent squash-merges the PR (`gh pr merge --squash`), confirms the release-please release PR, and after its approval reports the resulting release via `gh release view vX.Y.Z`.
-- The agent never has access to provider tokens, AMO credentials, or any release secret. The release flow uses only the default `GITHUB_TOKEN`.
+- The agent never has access to provider tokens, AMO credentials, or any release secret.
+- AMO API credentials (`AMO_API_KEY` = JWT issuer, `AMO_API_SECRET` = JWT secret) are stored in
+  GitHub Secrets for the release workflow only. They are consumed via `${{ secrets.* }}`, never
+  logged, printed, exported to artifacts, or exposed to agents/local tooling. The updater script
+  (`npm run update:extension`) uses only the public GitHub API.
 
 Recommended skills:
 
@@ -493,7 +502,9 @@ The following remain for feature work and are not part of the setup phase:
 - `docs/architecture.md`, `docs/security.md`, `docs/testing.md`, `docs/diagnostics.md` (created as the relevant behavior is implemented).
 - Fake Real-Debrid HTTPS services (only the hello-world E2E exists at setup).
 - `SECURITY.md` (deferred until beta).
-- AMO public distribution and signing (deferred).
+- AMO public/listed distribution, update channels, and marketplace publication (deferred).
+  Note: AMO *signing* itself is now in scope (unlisted channel, CI-signed `.xpi`); see
+  `docs/decisions/ADR-002-amo-ci-signing.md`.
 
 ## Deferred Scope
 
