@@ -221,7 +221,13 @@ Before implementation:
 - Require all changes to enter the protected default branch through a pull request. PRs merge via **squash merge** so the squashed commit message is the Conventional Commit message that release-please reads.
 - Run the required quality, test, build, manifest, and security checks on every pull request.
 - Do not allow a pull request to merge while any required check is failing.
-- Require commit messages to follow the Conventional Commits specification. Enforcement is CI-only via the `wagoid/commitlint-github-action` job (no local husky or pre-commit hooks). The job validates both the PR commits and the PR title, since the PR title becomes the squashed commit message.
+- Require commit messages to follow the Conventional Commits specification. Enforcement is CI-only
+  via the `wagoid/commitlint-github-action` job (no local husky or pre-commit hooks). The job
+  validates both the PR commits and the PR title, since the PR title becomes the squashed commit
+  message. PRs authored by `dependabot[bot]` are exempt from the commitlint check: Dependabot's
+  auto-generated commit bodies contain long URLs that violate the default `body-max-line-length`
+  rule, and its commits already follow Conventional Commits. Human-authored PRs keep full
+  enforcement.
 - Add a root `AGENTS.md`.
 - Add `.gitignore`, `.gitattributes`, `.editorconfig`, `.prettierrc`, `.prettierignore`, `.nvmrc`, `package.json`, and `package-lock.json`. `.gitattributes` sets `* text=auto eol=lf` and binary exemptions (for example, `*.png -text`); `.editorconfig` enforces UTF-8, LF, final newline, and indent independently of editor.
 - Pin the Node.js version with `.nvmrc` (single line: `24`). Add `engines.node: ">=24.0.0 <25.0.0"` and `engineStrict: true` to `package.json`. CI reads `.nvmrc` via `actions/setup-node` `node-version-file` input.
