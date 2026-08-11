@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# WXT / build output
+dist/
+.wxt/
+.output/
+
+# Test artifacts
+geckodriver.log
+*.tmp-firefox-profile/
+screenshots/
+diagnostics-exports/
+*.torrent
+
+# Local provider credentials / secrets (never commit)
+.local.env
+.env
+.env.local
+*.local
+
+# Editor / OS
+Thumbs.db
+.DS_Store
+
+# Coverage
+coverage/
+.nyc_output/
