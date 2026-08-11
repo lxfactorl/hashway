@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - if: github.actor != 'dependabot[bot]'
+      - if: github.event.pull_request.user.login != 'dependabot[bot]'
         uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed
 
   pr-link:
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR references an issue
-        if: github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'release-please--')
+        if: github.event.pull_request.user.login != 'dependabot[bot]' && !startsWith(github.head_ref, 'release-please--')
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
