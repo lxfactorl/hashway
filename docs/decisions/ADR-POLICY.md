@@ -56,7 +56,8 @@ When in doubt, propose an ADR and let the owner decide.
 
 When one ADR supersedes another, both files are updated in the same PR: the new ADR gains
 `Supersedes: ADR-00Y` in its header, and the replaced ADR's status changes to `Superseded`
-with `Superseded by: ADR-00X`.
+with `Superseded by: ADR-00X`. An ADR that is deprecated without a replacement has its status
+changed to `Deprecated` in the same PR as the change that deprecates it.
 
 ## Template
 

@@ -111,9 +111,9 @@ blocks criticals. Revert to `--audit-level=high` once a patched `image-size` is 
 ## ADR policy
 
 - Propose an ADR (draft text in discussion) before implementation for: deviations from the
-  approved baseline spec (`docs/technology-stack-and-repository-requirements.md`), and
-  architectural decisions (new runtime dependency, layers/boundaries, storage schema, event
-  schema, retry strategy, E2E topology, token/threat-model changes).
+  approved baseline spec (`docs/technology-stack-and-repository-requirements.md`) or from a
+  policy in this file, and architectural decisions (new runtime dependency, layers/boundaries,
+  storage schema, event schema, retry strategy, E2E topology, token/threat-model changes).
 - Never create an ADR file without explicit owner approval. Commit it with the implementing
   change or as a standalone PR.
 - No ADR is needed for bugfixes, refactors without boundary changes, UI/text changes, test
