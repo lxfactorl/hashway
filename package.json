@@ -1,6 +1,6 @@
 {
   "name": "hashway",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Firefox WebExtension for sending torrent intents to Real-Debrid (hello-world setup phase).",
   "license": "MIT",
