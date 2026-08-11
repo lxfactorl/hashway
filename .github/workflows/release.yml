@@ -61,6 +61,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-please.outputs.upload_url }}
-          asset_path: hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
+          asset_path: web-ext-artifacts/hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
           asset_name: hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
           asset_content_type: application/x-xpinstall
