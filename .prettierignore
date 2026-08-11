@@ -11,3 +11,4 @@ docs/technology-stack-and-repository-requirements.md
 opencode.json
 .release-please-manifest.json
 CHANGELOG.md
+.superpowers/

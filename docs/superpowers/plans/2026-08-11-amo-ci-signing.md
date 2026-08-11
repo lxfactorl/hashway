@@ -100,12 +100,13 @@ prohibited any AMO credentials in CI (line 379) and deferred all signing.
 
 Adopt **AMO signing in CI**:
 
-1. `release.yml` job `build-upload` gains a guarded signing step:
-   `npx web-ext sign --source-dir dist --channel unlisted --api-key ${{ secrets.AMO_API_KEY }}
-   --api-secret ${{ secrets.AMO_API_SECRET }} --artifacts-dir web-ext-artifacts`.
-   The step runs only when both secrets are present (`if: ${{ secrets.AMO_API_KEY != '' &&
-   secrets.AMO_API_SECRET != '' }}`); otherwise it skips and the Release carries only the unsigned
-   zip.
+1. `release.yml` job `build-upload` maps the secrets to job-level env and gains a guarded signing
+   step: `npx web-ext sign --source-dir dist --channel unlisted --api-key $env:AMO_API_KEY
+   --api-secret $env:AMO_API_SECRET --artifacts-dir web-ext-artifacts`.
+   The step runs only when both env vars are present (`if: env.AMO_API_KEY != '' &&
+   env.AMO_API_SECRET != ''`); otherwise it skips and the Release carries only the unsigned
+   zip. Secrets cannot be referenced directly in `if:` conditionals, so the guard uses the
+   job-level env values.
 2. The signed `hashway-v<X.Y.Z>-an+fx.xpi` is uploaded to the same GitHub Release.
 3. A local script `npm run update:extension` (`scripts/update-extension.ps1`) downloads the latest
    signed `.xpi` from the public GitHub API and writes it to
@@ -155,6 +156,9 @@ The final `build-upload` job should be:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+      AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -166,15 +170,21 @@ The final `build-upload` job should be:
       - name: Zip dist
         run: Compress-Archive -Path dist/* -DestinationPath hashway-v${{ needs.release-please.outputs.tag_name }}.zip
       - name: Sign extension (AMO)
-        if: ${{ secrets.AMO_API_KEY != '' && secrets.AMO_API_SECRET != '' }}
-        env:
-          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
-          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
         run: |
           npx web-ext sign --source-dir dist --channel unlisted `
             --api-key $env:AMO_API_KEY `
             --api-secret $env:AMO_API_SECRET `
             --artifacts-dir web-ext-artifacts
+      - name: Locate signed xpi
+        if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
+        id: xpi
+        shell: pwsh
+        run: |
+          $xpi = Get-ChildItem -Path "web-ext-artifacts" -Filter "*.xpi" | Select-Object -First 1
+          if (-not $xpi) { throw "No signed xpi found in web-ext-artifacts" }
+          "path=$($xpi.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($xpi.Name)" >> $env:GITHUB_OUTPUT
       - name: Upload zip asset
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
@@ -185,20 +195,22 @@ The final `build-upload` job should be:
           asset_name: hashway-v${{ needs.release-please.outputs.tag_name }}.zip
           asset_content_type: application/zip
       - name: Upload signed xpi
-        if: ${{ secrets.AMO_API_KEY != '' && secrets.AMO_API_SECRET != '' }}
+        if: env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-please.outputs.upload_url }}
-          asset_path: hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
-          asset_name: hashway-v${{ needs.release-please.outputs.tag_name }}-an+fx.xpi
+          asset_path: ${{ steps.xpi.outputs.path }}
+          asset_name: ${{ steps.xpi.outputs.name }}
           asset_content_type: application/x-xpinstall
 ```
 
-**Note:** the exact signed filename produced by `web-ext sign` (web-ext 10.6.0) is expected to be
-`<slug>-<version>-an+fx.xpi`. If the CI run shows a different filename after real signing, update
-`asset_path`/`asset_name` accordingly (record the deviation in the commit message).
+**Note:** secrets cannot be referenced directly in `if:` conditionals, so the secrets are mapped
+to job-level `env` and the guards use `env.AMO_API_KEY != '' && env.AMO_API_SECRET != ''`. The
+signed xpi is located by globbing `web-ext-artifacts/*.xpi` (web-ext names it from the AMO
+download URL, e.g. `hashway-0.1.0-an+fx.xpi`, without a `v` prefix) and uploaded by its actual
+path/name.
 
 - [ ] **Step 2: Validate the workflow file parses**
 

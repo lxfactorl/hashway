@@ -1,4 +1,5 @@
 import { defineConfig } from "wxt";
+import pkg from "./package.json";
 
 export default defineConfig({
   srcDir: "src",
@@ -9,7 +10,7 @@ export default defineConfig({
   manifest: {
     name: "Hashway",
     short_name: "Hashway",
-    version: "0.1.0",
+    version: pkg.version,
     description: "Send torrent intents to Real-Debrid (hello-world setup phase).",
     browser_action: {
       default_title: "Hashway",
