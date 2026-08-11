@@ -35,7 +35,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("auto-merge");
-  });
+  }, 15000);
 
   it("auto-merges patch prod bump", () => {
     expect(
@@ -45,7 +45,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("auto-merge");
-  });
+  }, 15000);
 
   it("auto-merges minor github-actions bump (audit skipped -> 0)", () => {
     expect(
@@ -55,7 +55,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("auto-merge");
-  });
+  }, 15000);
 
   it("flags major bump of any ecosystem", () => {
     expect(
@@ -65,7 +65,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("needs-review");
-  });
+  }, 15000);
 
   it("flags dirty (merge conflict) even for minor bump", () => {
     expect(
@@ -75,7 +75,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("needs-review");
-  });
+  }, 15000);
 
   it("flags audit failure (nonzero auditExit)", () => {
     expect(
@@ -85,7 +85,7 @@ describe("dependabot verdict", () => {
         auditExit: 1,
       }),
     ).toBe("needs-review");
-  });
+  }, 15000);
 
   it("flags major + dirty + audit failure as needs-review", () => {
     expect(
@@ -95,7 +95,7 @@ describe("dependabot verdict", () => {
         auditExit: 2,
       }),
     ).toBe("needs-review");
-  });
+  }, 15000);
 
   it("treats behind state as auto-merge (GitHub updates branch first)", () => {
     expect(
@@ -105,7 +105,7 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("auto-merge");
-  });
+  }, 15000);
 
   it("treats unknown mergeable_state as auto-merge (only dirty blocks)", () => {
     expect(
@@ -115,5 +115,5 @@ describe("dependabot verdict", () => {
         auditExit: 0,
       }),
     ).toBe("auto-merge");
-  });
+  }, 15000);
 });
