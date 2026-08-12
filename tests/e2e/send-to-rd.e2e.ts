@@ -156,7 +156,18 @@ describe("send-to-rd E2E", () => {
     async () => {
       rd.requests.length = 0;
       rmSync(PROFILE_DIR, { recursive: true, force: true });
-      mkdirSync(PROFILE_DIR, { recursive: true });
+      mkdirSync(join(PROFILE_DIR, "extensions"), { recursive: true });
+
+      // Permanent install so `extensions.webextensions.uuids` is honored (the
+      // pref only applies to permanently-installed add-ons, not the temporary
+      // load `addExtensions` performs). Write the built extension as the
+      // profile's extensions/<id>.xpi before Firefox starts.
+      const zip = new Zip();
+      await zip.addDir(DIST_DIR);
+      writeFileSync(
+        join(PROFILE_DIR, "extensions", `${EXTENSION_ID}.xpi`),
+        await zip.toBuffer("DEFLATE"),
+      );
 
       const geckodriverPath = await downloadGeckodriver();
       const service = new ServiceBuilder(geckodriverPath);
@@ -168,16 +179,19 @@ describe("send-to-rd E2E", () => {
       options.addArguments("--headless");
       options.setProfile(PROFILE_DIR);
       options.setPreference("extensions.autoDisableScopes", 0);
+      options.setPreference("xpinstall.signatures.required", false);
       options.setPreference(
         "extensions.webextensions.uuids",
         JSON.stringify({ [EXTENSION_ID]: EXTENSION_UUID }),
       );
-
-      const zip = new Zip();
-      await zip.addDir(DIST_DIR);
-      const extensionPath = join(zipDir, "hashway.zip");
-      writeFileSync(extensionPath, await zip.toBuffer("DEFLATE"));
-      options.addExtensions(extensionPath);
+      // geckodriver rejects both top-level navigation and script-initiated
+      // window.open to moz-extension:// URLs (UnsupportedOperationError /
+      // "Access to moz-extension from script denied"). Instead, let Firefox
+      // itself load the options page as the startup homepage: this is the
+      // browser's own navigation, not WebDriver's, so the restriction does not
+      // apply.
+      options.setPreference("browser.startup.page", 1);
+      options.setPreference("browser.startup.homepage", OPTIONS_URL);
 
       let driver: WebDriver | undefined;
       try {
@@ -187,14 +201,6 @@ describe("send-to-rd E2E", () => {
           .setFirefoxOptions(options)
           .build();
 
-        // geckodriver rejects both top-level navigation and script-initiated
-        // window.open to moz-extension:// URLs (UnsupportedOperationError /
-        // "Access to moz-extension from script denied"). Instead, let Firefox
-        // itself load the options page as the startup homepage: this is the
-        // browser's own navigation, not WebDriver's, so the restriction does not
-        // apply and the extension's UUID is pinned via extensions.webextensions.uuids.
-        options.setPreference("browser.startup.page", 1);
-        options.setPreference("browser.startup.homepage", OPTIONS_URL);
         // The WebDriver session may attach to a fresh about:blank window while
         // Firefox opens the homepage in another tab/window; scan all handles.
         await driver.wait(
