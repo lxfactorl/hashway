@@ -38,11 +38,11 @@ export default defineConfig({
     },
   },
   alias: {
-    "@domain": "/src/domain",
-    "@application": "/src/application",
-    "@ports": "/src/ports",
-    "@adapters": "/src/adapters",
-    "@entrypoints": "/src/entrypoints",
-    "@tests": "/tests",
+    "@domain": "src/domain",
+    "@application": "src/application",
+    "@ports": "src/ports",
+    "@adapters": "src/adapters",
+    "@entrypoints": "src/entrypoints",
+    "@tests": "tests",
   },
 });

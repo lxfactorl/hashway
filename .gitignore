@@ -12,6 +12,7 @@ geckodriver.log
 screenshots/
 diagnostics-exports/
 *.torrent
+tests/fixtures/torrents/generate.ts
 
 # Local provider credentials / secrets (never commit)
 .local.env
