@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/lxfactorl/hashway/compare/v0.2.2...v0.3.0) (2026-08-12)
+
+
+### Features
+
+* send to real-debrid ([#57](https://github.com/lxfactorl/hashway/issues/57)) ([7021c26](https://github.com/lxfactorl/hashway/commit/7021c26c70ff9292bbfe8fc466647ce4b1b7e958))
+
+
+### Docs
+
+* add ADR policy (triggers, template, and lifecycle) ([#55](https://github.com/lxfactorl/hashway/issues/55)) ([900c81b](https://github.com/lxfactorl/hashway/commit/900c81bad025cbe98e5f6d07d29656daf41bd62b))
+
 ## [0.2.2](https://github.com/lxfactorl/hashway/compare/v0.2.1...v0.2.2) (2026-08-11)
 
 
