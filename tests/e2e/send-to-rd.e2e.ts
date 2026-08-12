@@ -173,6 +173,12 @@ describe("send-to-rd E2E", () => {
       const service = new ServiceBuilder(geckodriverPath);
       service.addArguments("--log", "debug");
       const geckoLog = createWriteStream(GECKODRIVER_LOG);
+      // Wait until the log stream is open: child_process.spawn rejects a not-yet-open
+      // WriteStream passed via stdio (Node validates that fd is non-null).
+      await new Promise<void>((resolve, reject) => {
+        geckoLog.once("open", resolve);
+        geckoLog.once("error", reject);
+      });
       service.setStdio(["ignore", geckoLog, geckoLog]);
 
       const options = new FirefoxOptions();
