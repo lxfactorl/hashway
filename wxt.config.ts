@@ -36,7 +36,6 @@ export default defineConfig({
       page: "options.html",
       open_in_tab: false,
     },
-    web_accessible_resources: ["options.html"],
   },
   alias: {
     "@domain": "src/domain",

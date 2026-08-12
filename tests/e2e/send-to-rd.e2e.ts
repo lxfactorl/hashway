@@ -187,20 +187,19 @@ describe("send-to-rd E2E", () => {
           .setFirefoxOptions(options)
           .build();
 
-        // geckodriver rejects top-level navigation to moz-extension:// URLs
-        // (UnsupportedOperationError), and window.open to an extension page is
-        // denied from the null-principal about:blank context. Navigate to a real
-        // origin (the fake tracker) first, then open the web-accessible options
-        // page from there and switch to the new tab.
-        await driver.get(`http://127.0.0.1:${String(trackerPort)}/`);
-        await driver.executeScript("window.open(arguments[0], '_blank');", OPTIONS_URL);
+        // geckodriver rejects both top-level navigation and script-initiated
+        // window.open to moz-extension:// URLs (UnsupportedOperationError /
+        // "Access to moz-extension from script denied"). Instead, let Firefox
+        // itself load the options page as the startup homepage: this is the
+        // browser's own navigation, not WebDriver's, so the restriction does not
+        // apply and the extension's UUID is pinned via extensions.webextensions.uuids.
+        options.setPreference("browser.startup.page", 1);
+        options.setPreference("browser.startup.homepage", OPTIONS_URL);
         await driver.wait(
-          async () => (await driver.getAllWindowHandles()).length >= 2,
+          async () => (await driver.getCurrentUrl()).startsWith("moz-extension://"),
           30000,
-          "options page tab did not open",
+          "Firefox did not open the options page as the startup homepage",
         );
-        const handles = await driver.getAllWindowHandles();
-        await driver.switchTo().window(handles[handles.length - 1] ?? "");
         await waitForRuntime(driver);
 
         const setup = await sendTestMessage(driver, {

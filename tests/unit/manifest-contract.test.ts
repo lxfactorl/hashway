@@ -15,7 +15,6 @@ interface Manifest {
   options_ui?: unknown;
   background?: unknown;
   content_scripts?: Array<{ matches?: string[] }>;
-  web_accessible_resources?: string[];
 }
 
 function readManifest(): Manifest {
@@ -91,9 +90,5 @@ describe("manifest contract", () => {
         expect(m).toMatch(/^https:\/\//);
       }
     }
-  });
-
-  it("web_accessible_resources contains only options.html", () => {
-    expect(readManifest().web_accessible_resources).toEqual(["options.html"]);
   });
 });

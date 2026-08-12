@@ -109,11 +109,11 @@ with exponential backoff within the 30 s action deadline.
   an optional test `rdBaseUrl` override. These are consumed only by the geckodriver E2E
   (`tests/e2e/send-to-rd.e2e.ts`), which sends them from the options page via
   `browser.runtime.sendMessage`.
-- To reach the options page, the manifest exposes it via `web_accessible_resources` (`options.html`
-  only, pinned by the manifest contract test). Firefox forbids both top-level navigation and
-  null-principal `window.open` to `moz-extension://` URLs, so the E2E opens the page from a real
-  HTTP origin instead. Web pages can open the page in a tab but cannot read its contents
-  (cross-origin isolation) and cannot reach the background's message listener.
+- To reach the options page, the E2E sets the extension's `moz-extension://…/options.html` URL as
+  the Firefox startup homepage (with the extension UUID pinned via `extensions.webextensions.uuids`).
+  Firefox forbids both top-level navigation and script-initiated `window.open` to `moz-extension://`
+  URLs from WebDriver, but the browser's own startup navigation is not restricted; no
+  `web_accessible_resources` entry is needed, so no web page can ever open or read the options page.
 - No production flow sends these message types, and the context-menu flow uses the real
   `createRealDebridClient` against the fixed production base URL. The production artifact therefore
   contains no reachable test endpoint or fake-provider path.
