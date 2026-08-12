@@ -195,8 +195,16 @@ describe("send-to-rd E2E", () => {
         // apply and the extension's UUID is pinned via extensions.webextensions.uuids.
         options.setPreference("browser.startup.page", 1);
         options.setPreference("browser.startup.homepage", OPTIONS_URL);
+        // The WebDriver session may attach to a fresh about:blank window while
+        // Firefox opens the homepage in another tab/window; scan all handles.
         await driver.wait(
-          async () => (await driver.getCurrentUrl()).startsWith("moz-extension://"),
+          async () => {
+            for (const h of await driver.getAllWindowHandles()) {
+              await driver.switchTo().window(h);
+              if ((await driver.getCurrentUrl()).startsWith("moz-extension://")) return true;
+            }
+            return false;
+          },
           30000,
           "Firefox did not open the options page as the startup homepage",
         );
