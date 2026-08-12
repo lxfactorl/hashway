@@ -61,19 +61,29 @@ Deterministic, seeded fast-check properties in `tests/property/`:
 - No `localhost` / `127.0.0.1` / `*.test` host permissions.
 - `options_ui` and `background` present; content-script matches HTTPS-only if present.
 
-## Browser E2E (CI only)
+## E2E integration (CI only)
 
-`tests/e2e/send-to-rd.e2e.ts` drives a real Firefox (headless, temporary profile, fixed
-`extensions.webextensions.uuids`) with the built extension installed:
+`tests/e2e/send-to-rd.e2e.ts` drives the **real** `sendTorrent` use case and the **real**
+`createRealDebridClient` against a live HTTP fake RD (and a live fake tracker) — no browser is
+involved:
 
 - **Fake tracker** serves the committed `single-file-v1.torrent` fixture and a login page.
 - **Fake RD** answers `/torrents/addMagnet` → 201 `{ id: "t1" }`, `/torrents/selectFiles/t1` → 202,
-  `/user` → 200, with CORS headers so the extension origin can reach it.
-- The test uses the **test-only trigger** messages `hashway:test:setup` (token + test `rdBaseUrl`)
-  and `hashway:test:send` (full intent) instead of automating native context-menu chrome UI.
-- Asserts: outcome `accepted`, badge becomes `✓`, RD received `addMagnet` and `selectFiles/t1`, no
-  SEVERE browser console errors. Flaky runs retry at most twice; on failure the job saves
-  `geckodriver.log`, screenshots, and a diagnostics export as artifacts.
+  `/user` → 200, with CORS headers; it records each request's method, URL, and body.
+- Asserts: a magnet link is sanitized to only `xt`+`dn` before it reaches RD (a tracker passkey in
+  `tr` never survives); a `.torrent` fetched through the messaging port is parsed, hashed to the
+  fixture's real v1 infohash, and added; a session-required page maps to `tracker_auth`; a
+  cross-origin link is rejected. The background has **no** test-only message handlers.
+
+geckodriver forbids navigation to `moz-extension://` URLs, so the extension's own pages cannot be
+driven reliably in Selenium. `hello-world.e2e.ts` still loads the built extension in a real headless
+Firefox profile and asserts it starts without SEVERE console errors. The real context-menu click on
+a live tracker page is a **manual smoke step**:
+
+1. `npm run update:extension` (or `about:debugging` → Load Temporary Add-on) to install the build.
+2. Open an HTTPS tracker page, log in, and right-click a `.torrent` link → **Send to Real-Debrid**.
+3. Confirm the notification "Added: …", the `✓` badge, and the magnet appearing under
+   `https://real-debrid.com/torrents`.
 
 The E2E never uses a personal token; the fixture magnet and token are test-only values.
 

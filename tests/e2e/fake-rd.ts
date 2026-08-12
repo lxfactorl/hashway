@@ -5,6 +5,7 @@ import type { Server } from "node:http";
 export interface FakeRdRequest {
   readonly method: string;
   readonly url: string;
+  readonly body: string;
 }
 
 export interface FakeRd {
@@ -28,33 +29,35 @@ export function createFakeRd(): FakeRd {
   const server: Server = createServer((req, res) => {
     const method = req.method ?? "";
     const rawUrl = req.url ?? "";
-    requests.push({ method, url: rawUrl });
-    const pathname = rawUrl.split("?")[0] ?? rawUrl;
-    if (method === "OPTIONS") {
-      res.writeHead(204, { ...CORS_HEADERS });
+    const chunks: Buffer[] = [];
+    req.on("data", (c: Buffer) => chunks.push(c));
+    req.on("end", () => {
+      const body = Buffer.concat(chunks).toString("utf8");
+      requests.push({ method, url: rawUrl, body });
+      const pathname = rawUrl.split("?")[0] ?? rawUrl;
+      if (method === "OPTIONS") {
+        res.writeHead(204, { ...CORS_HEADERS });
+        res.end();
+        return;
+      }
+      if (method === "POST" && pathname === "/rest/1.0/torrents/addMagnet") {
+        res.writeHead(201, { ...CORS_HEADERS, "Content-Type": "application/json" });
+        res.end(JSON.stringify({ id: "t1" }));
+        return;
+      }
+      if (method === "POST" && pathname === "/rest/1.0/torrents/selectFiles/t1") {
+        res.writeHead(202, { ...CORS_HEADERS });
+        res.end();
+        return;
+      }
+      if (method === "GET" && pathname === "/rest/1.0/user") {
+        res.writeHead(200, { ...CORS_HEADERS, "Content-Type": "application/json" });
+        res.end("{}");
+        return;
+      }
+      res.writeHead(404, { ...CORS_HEADERS });
       res.end();
-      return;
-    }
-    if (method === "POST" && pathname === "/rest/1.0/torrents/addMagnet") {
-      req.resume();
-      res.writeHead(201, { ...CORS_HEADERS, "Content-Type": "application/json" });
-      res.end(JSON.stringify({ id: "t1" }));
-      return;
-    }
-    if (method === "POST" && pathname === "/rest/1.0/torrents/selectFiles/t1") {
-      req.resume();
-      res.writeHead(202, { ...CORS_HEADERS });
-      res.end();
-      return;
-    }
-    if (method === "GET" && pathname === "/rest/1.0/user") {
-      res.writeHead(200, { ...CORS_HEADERS, "Content-Type": "application/json" });
-      res.end("{}");
-      return;
-    }
-    req.resume();
-    res.writeHead(404, { ...CORS_HEADERS });
-    res.end();
+    });
   });
   return {
     requests,

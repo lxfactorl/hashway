@@ -67,7 +67,7 @@ src/
       redaction.ts      # sanitizeEvent / redactUrl / redactHeaders
       export.ts         # JSON export assembly via downloads port
   entrypoints/
-    background.ts       # wiring: context menu, messaging, diagnostics, test-only triggers
+    background.ts       # wiring: context menu, messaging, diagnostics, notifications
     content.content.ts  # same-origin HTTPS fetchTracker, 25 MB cap
     options/main.ts     # token field, Test token, diagnostics view + Download diagnostics
 ```
@@ -144,13 +144,15 @@ See the tech-stack baseline "Layer Boundaries Enforcement" for the original stat
 - The background and options entrypoints both create a `createVersionedStorage` over the Firefox
   storage adapter and a `createRingBuffer(storage, 4 * 1024 * 1024)`.
 
-## Test-only seams
+## E2E integration (no browser)
 
-The background entrypoint handles two message types that the real UI never sends: `hashway:test:setup`
-(sets a token and/or a test Real-Debrid base URL) and `hashway:test:send` (injects a full intent,
-optionally routing Real-Debrid calls to a fake `baseUrl`). These exist so the geckodriver E2E can
-drive the application use case without automating Firefox context-menu chrome UI; they are
-unreachable from production flows. See `docs/security.md` and `docs/testing.md`.
+The send-to-real-debrid E2E (`tests/e2e/send-to-rd.e2e.ts`) drives the **real** `sendTorrent` use case
+with the **real** `createRealDebridClient` against a live HTTP fake RD (and a live fake tracker),
+running in CI on `windows-latest`. It does not open the extension's own pages: geckodriver forbids
+navigation to `moz-extension://` URLs, which made in-browser driving unreliable. The real
+context-menu click on a live tracker page is a manual smoke step documented in `docs/testing.md`;
+`hello-world.e2e.ts` still loads the extension in a real Firefox profile and asserts it starts
+cleanly. The background contains no test-only message handlers.
 
 ## Evolution boundaries
 

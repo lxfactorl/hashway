@@ -1,141 +1,73 @@
 // tests/e2e/send-to-rd.e2e.ts
+// Node-level integration E2E: drives the REAL sendTorrent use case and the REAL
+// Real-Debrid HTTP client against a live HTTP fake RD (and a live fake tracker).
+// No Firefox/Selenium is involved; the real context-menu click is a manual smoke
+// step (see docs/testing.md) because geckodriver forbids navigation to
+// moz-extension:// URLs, which made driving the extension's own pages unreliable
+// in CI. Runs in CI on windows-latest (tests/e2e), same as hello-world.e2e.ts.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Builder } from "selenium-webdriver";
-import type { WebDriver } from "selenium-webdriver";
-import { Options as FirefoxOptions, ServiceBuilder } from "selenium-webdriver/firefox.js";
-import { Zip } from "selenium-webdriver/io/zip.js";
-import { download as downloadGeckodriver } from "geckodriver";
-import {
-  createWriteStream,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { resolve, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createFakeRd, type FakeRd } from "./fake-rd.js";
 import { createFakeTracker, type FakeTracker } from "./fake-tracker.js";
+import { createRealDebridClient } from "@adapters/real-debrid/client";
+import { classifyLink } from "@adapters/firefox/active-tab";
+import { sendTorrent } from "@application/send-torrent";
+import { parseTorrent } from "@domain/bencode";
+import { computeV1InfoHash } from "@domain/infohash";
+import type { NotificationsPort } from "@ports/notifications";
+import type { MessagingPort, FetchTrackerResponse } from "@ports/messaging";
+import type { LinkClickIntent } from "@ports/context-menu";
 
-const EXTENSION_ID = "hashway@hashway.local";
-// Fixed UUID via the `extensions.webextensions.uuids` profile pref so the test
-// knows the moz-extension:// base URL without scraping about:debugging.
-const EXTENSION_UUID = "e2e00000-0000-4000-8000-000000000000";
-const OPTIONS_URL = `moz-extension://${EXTENSION_UUID}/options.html`;
-
-const DIST_DIR = resolve(process.cwd(), "dist");
 const FIXTURE_TORRENT = resolve(process.cwd(), "tests/fixtures/torrents/single-file-v1.torrent");
-const PROFILE_DIR = resolve(process.cwd(), "hashway-e2e.tmp-firefox-profile");
-const SCREENSHOTS_DIR = resolve(process.cwd(), "screenshots");
-const DIAGNOSTICS_DIR = resolve(process.cwd(), "diagnostics-exports");
-const GECKODRIVER_LOG = resolve(process.cwd(), "geckodriver.log");
+const MAGNET_V1 = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=E2E";
 
-interface TestMessageResponse {
-  readonly ok: boolean;
-  readonly outcome?: unknown;
-  readonly error?: string;
+interface TestRecord {
+  readonly notified: string[];
+  readonly badges: string[];
 }
 
-async function sendTestMessage(
-  driver: WebDriver,
-  message: Record<string, unknown>,
-): Promise<TestMessageResponse> {
-  const script = `
-    const msg = arguments[0];
-    const done = arguments[arguments.length - 1];
-    try {
-      browser.runtime.sendMessage(msg).then(
-        (response) => done(response),
-        (error) => done({ ok: false, error: String(error) })
-      );
-    } catch (e) {
-      done({ ok: false, error: String(e) });
-    }
-  `;
-  const result = await driver.executeAsyncScript<unknown>(script, message);
-  return result as TestMessageResponse;
-}
-
-async function waitForRuntime(driver: WebDriver): Promise<void> {
-  await driver.wait(
-    async () => {
-      const ready = await driver.executeScript<boolean>(
-        "return typeof browser !== 'undefined' && typeof browser.runtime !== 'undefined';",
-      );
-      return ready;
+function fakeNotifications(record: TestRecord): NotificationsPort {
+  return {
+    notify(_title, message) {
+      record.notified.push(message);
+      return Promise.resolve();
     },
-    30000,
-    "extension options page did not expose browser.runtime",
-  );
+    setBadge(badge) {
+      record.badges.push(badge);
+      return Promise.resolve();
+    },
+  };
 }
 
-async function getBadgeText(driver: WebDriver): Promise<string> {
-  const script = `
-    const done = arguments[arguments.length - 1];
-    browser.browserAction.getBadgeText({}).then(done, done);
-  `;
-  const value = await driver.executeAsyncScript<unknown>(script);
-  return typeof value === "string" ? value : "";
+function intent(linkUrl: string): LinkClickIntent {
+  return { linkUrl, pageUrl: "https://t.example.com/x", tabTitle: "E2E", tabId: 0 };
 }
 
-async function captureScreenshot(driver: WebDriver | undefined): Promise<void> {
-  if (driver === undefined) return;
-  try {
-    const png = await driver.takeScreenshot();
-    mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-    writeFileSync(join(SCREENSHOTS_DIR, "send-to-rd-failure.png"), png, "base64");
-  } catch {
-    // best-effort diagnostics capture must never mask the original failure
-  }
+function fakeProvider(rdPort: number) {
+  return createRealDebridClient({
+    fetchFn: globalThis.fetch.bind(globalThis),
+    getToken: () => Promise.resolve("e2e-token"),
+    baseUrl: `http://127.0.0.1:${String(rdPort)}/rest/1.0`,
+  });
 }
 
-async function captureDiagnostics(driver: WebDriver | undefined): Promise<void> {
-  if (driver === undefined) return;
-  try {
-    const script = `
-      const done = arguments[arguments.length - 1];
-      browser.storage.local.get("hashway.v1.diagnostics").then(
-        (data) => done(data["hashway.v1.diagnostics"] ?? []),
-        () => done([])
-      );
-    `;
-    const events = await driver.executeAsyncScript<unknown>(script);
-    mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
-    writeFileSync(
-      join(DIAGNOSTICS_DIR, "hashway-diagnostics.json"),
-      `${JSON.stringify(events, null, 2)}\n`,
-    );
-  } catch {
-    // best-effort diagnostics capture must never mask the original failure
-  }
-}
-
-describe("send-to-rd E2E", () => {
+describe("send-to-rd E2E (integration, no browser)", () => {
   let rd: FakeRd;
   let rdPort: number;
   let tracker: FakeTracker;
   let trackerPort: number;
-  let zipDir: string;
-  let failed = false;
 
   beforeAll(async () => {
     rd = createFakeRd();
     ({ port: rdPort } = await rd.start());
     tracker = createFakeTracker();
     ({ port: trackerPort } = await tracker.start());
-    zipDir = mkdtempSync(join(process.cwd(), "hashway-e2e-"));
   });
 
   afterAll(async () => {
     await tracker.stop();
     await rd.stop();
-    rmSync(zipDir, { recursive: true, force: true });
-    if (!failed) {
-      rmSync(PROFILE_DIR, { recursive: true, force: true });
-      rmSync(SCREENSHOTS_DIR, { recursive: true, force: true });
-      rmSync(DIAGNOSTICS_DIR, { recursive: true, force: true });
-      rmSync(GECKODRIVER_LOG, { force: true });
-    }
   });
 
   it("serves the committed torrent fixture and a session-required page", async () => {
@@ -150,124 +82,133 @@ describe("send-to-rd E2E", () => {
     expect((await login.text()).startsWith("<!doctype html>")).toBe(true);
   });
 
-  it(
-    "sends a magnet intent through the test trigger and reaches the fake RD",
-    { retry: 2, timeout: 240000 },
-    async () => {
-      rd.requests.length = 0;
-      rmSync(PROFILE_DIR, { recursive: true, force: true });
-      mkdirSync(join(PROFILE_DIR, "extensions"), { recursive: true });
+  it("adds a magnet to the fake RD with only xt+dn (no tracker params)", async () => {
+    rd.requests.length = 0;
+    const record: TestRecord = { notified: [], badges: [] };
+    const provider = fakeProvider(rdPort);
+    const messaging: MessagingPort = {
+      fetchTrackerBytes: () =>
+        Promise.resolve({ ok: false, reason: "network" } satisfies FetchTrackerResponse),
+    };
 
-      // Permanent install so `extensions.webextensions.uuids` is honored (the
-      // pref only applies to permanently-installed add-ons, not the temporary
-      // load `addExtensions` performs). Write the built extension as the
-      // profile's extensions/<id>.xpi before Firefox starts.
-      const zip = new Zip();
-      await zip.addDir(DIST_DIR);
-      writeFileSync(
-        join(PROFILE_DIR, "extensions", `${EXTENSION_ID}.xpi`),
-        await zip.toBuffer("DEFLATE"),
-      );
+    const out = await sendTorrent(
+      {
+        provider,
+        notifications: fakeNotifications(record),
+        messaging,
+        parser: parseTorrent,
+        computeHash: computeV1InfoHash,
+        classify: classifyLink,
+      },
+      intent(`${MAGNET_V1}&tr=https://t.example.com/announce?key=SECRET`),
+      Date.now() + 30000,
+    );
 
-      const geckodriverPath = await downloadGeckodriver();
-      const service = new ServiceBuilder(geckodriverPath);
-      service.addArguments("--log", "debug");
-      const geckoLog = createWriteStream(GECKODRIVER_LOG);
-      // Wait until the log stream is open: child_process.spawn rejects a not-yet-open
-      // WriteStream passed via stdio (Node validates that fd is non-null).
-      await new Promise<void>((resolve, reject) => {
-        geckoLog.once("open", resolve);
-        geckoLog.once("error", reject);
-      });
-      service.setStdio(["ignore", geckoLog, geckoLog]);
+    expect(out.kind).toBe("accepted");
+    const calls = rd.requests.map((r) => `${r.method} ${r.url.split("?")[0] ?? ""}`);
+    expect(calls).toContain("POST /rest/1.0/torrents/addMagnet");
+    expect(calls).toContain("POST /rest/1.0/torrents/selectFiles/t1");
+    // The magnet Real-Debrid received must be sanitized: only xt + dn.
+    const add = rd.requests.find((r) => r.url.includes("/torrents/addMagnet"));
+    expect(add).toBeDefined();
+    const magnet = new URLSearchParams(add?.body ?? "").get("magnet") ?? "";
+    expect(magnet).toContain("xt=urn:btih:0123456789abcdef0123456789abcdef01234567");
+    expect(magnet).toContain("dn=E2E");
+    expect(magnet).not.toMatch(/tr=|xs=|x\.pe=|SECRET/);
+    // Success feedback: "Added: …" notification + OK badge.
+    expect(record.notified.some((m) => m.startsWith("Added: E2E"))).toBe(true);
+    expect(record.badges).toContain("OK");
+  });
 
-      const options = new FirefoxOptions();
-      options.addArguments("--headless");
-      options.setProfile(PROFILE_DIR);
-      options.setPreference("extensions.autoDisableScopes", 0);
-      options.setPreference("xpinstall.signatures.required", false);
-      options.setPreference(
-        "extensions.webextensions.uuids",
-        JSON.stringify({ [EXTENSION_ID]: EXTENSION_UUID }),
-      );
-      // geckodriver rejects both top-level navigation and script-initiated
-      // window.open to moz-extension:// URLs (UnsupportedOperationError /
-      // "Access to moz-extension from script denied"). Instead, let Firefox
-      // itself load the options page as the startup homepage: this is the
-      // browser's own navigation, not WebDriver's, so the restriction does not
-      // apply.
-      options.setPreference("browser.startup.page", 1);
-      options.setPreference("browser.startup.homepage", OPTIONS_URL);
+  it("downloads a .torrent through the messaging port, hashes it, and adds it", async () => {
+    rd.requests.length = 0;
+    const record: TestRecord = { notified: [], badges: [] };
+    const provider = fakeProvider(rdPort);
+    // The messaging port stands in for the content script: it performs a real
+    // fetch against the fake tracker and returns the bytes.
+    const messaging: MessagingPort = {
+      async fetchTrackerBytes(): Promise<FetchTrackerResponse> {
+        const res = await fetch(`http://127.0.0.1:${String(trackerPort)}/torrents/download`);
+        if (!res.ok) return { ok: false, reason: "http_error", status: res.status };
+        const bytes = await res.arrayBuffer();
+        return { ok: true, bytes };
+      },
+    };
 
-      let driver: WebDriver | undefined;
-      try {
-        driver = await new Builder()
-          .forBrowser("firefox")
-          .setFirefoxService(service)
-          .setFirefoxOptions(options)
-          .build();
+    const out = await sendTorrent(
+      {
+        provider,
+        notifications: fakeNotifications(record),
+        messaging,
+        parser: parseTorrent,
+        computeHash: computeV1InfoHash,
+        classify: classifyLink,
+      },
+      intent(`https://t.example.com/torrents/download`),
+      Date.now() + 30000,
+    );
 
-        // The WebDriver session may attach to a fresh about:blank window while
-        // Firefox opens the homepage in another tab/window; scan all handles.
-        await driver.wait(
-          async () => {
-            for (const h of await driver.getAllWindowHandles()) {
-              await driver.switchTo().window(h);
-              if ((await driver.getCurrentUrl()).startsWith("moz-extension://")) return true;
-            }
-            return false;
-          },
-          30000,
-          "Firefox did not open the options page as the startup homepage",
-        );
-        await waitForRuntime(driver);
+    expect(out.kind).toBe("accepted");
+    const calls = rd.requests.map((r) => `${r.method} ${r.url.split("?")[0] ?? ""}`);
+    expect(calls).toContain("POST /rest/1.0/torrents/addMagnet");
+    expect(calls).toContain("POST /rest/1.0/torrents/selectFiles/t1");
+    // The magnet must be built from the real v1 infohash of the fixture.
+    const add = rd.requests.find((r) => r.url.includes("/torrents/addMagnet"));
+    const magnet = new URLSearchParams(add?.body ?? "").get("magnet") ?? "";
+    expect(magnet).toContain("44020936b61b241a250af90aa0d1fac4567a3f25");
+    expect(record.badges).toContain("OK");
+  });
 
-        const setup = await sendTestMessage(driver, {
-          type: "hashway:test:setup",
-          token: "e2e-token",
-          rdBaseUrl: `http://127.0.0.1:${String(rdPort)}/rest/1.0`,
-        });
-        expect(setup.ok).toBe(true);
+  it("maps a session-required tracker page to tracker_auth", async () => {
+    rd.requests.length = 0;
+    const record: TestRecord = { notified: [], badges: [] };
+    const provider = fakeProvider(rdPort);
+    const messaging: MessagingPort = {
+      fetchTrackerBytes: () =>
+        Promise.resolve({ ok: false, reason: "session_required" } satisfies FetchTrackerResponse),
+    };
 
-        const result = await sendTestMessage(driver, {
-          type: "hashway:test:send",
-          intent: {
-            linkUrl: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=E2E",
-            pageUrl: "https://t.example.com/x",
-            tabTitle: "E2E",
-            tabId: 0,
-          },
-        });
-        expect(result.ok).toBe(true);
-        expect(result.outcome).toMatchObject({ kind: "accepted" });
+    const out = await sendTorrent(
+      {
+        provider,
+        notifications: fakeNotifications(record),
+        messaging,
+        parser: parseTorrent,
+        computeHash: computeV1InfoHash,
+        classify: classifyLink,
+      },
+      intent(`https://t.example.com/torrents/login`),
+      Date.now() + 30000,
+    );
 
-        const badgeText = await driver.wait(
-          async () => getBadgeText(driver as WebDriver),
-          15000,
-          "browser action badge did not become the OK checkmark",
-        );
-        expect(badgeText).toBe("\u2713");
+    expect(out).toMatchObject({ kind: "failed", error: "tracker_auth" });
+    expect(record.notified).toContain("Session required on tracker");
+    expect(record.badges).toContain("ERR");
+    expect(rd.requests).toHaveLength(0);
+  });
 
-        const calls = rd.requests.map((r) => `${r.method} ${r.url.split("?")[0] ?? ""}`);
-        expect(calls).toContain("POST /rest/1.0/torrents/addMagnet");
-        expect(calls).toContain("POST /rest/1.0/torrents/selectFiles/t1");
+  it("rejects a cross-origin HTTPS link", async () => {
+    const record: TestRecord = { notified: [], badges: [] };
+    const provider = fakeProvider(rdPort);
+    const messaging: MessagingPort = {
+      fetchTrackerBytes: () =>
+        Promise.resolve({ ok: false, reason: "network" } satisfies FetchTrackerResponse),
+    };
 
-        const logs = await driver
-          .manage()
-          .logs()
-          .get("browser")
-          .catch(() => []);
-        const severe = logs.filter((l) => l.level.name === "SEVERE");
-        expect(severe).toHaveLength(0);
-      } catch (err) {
-        failed = true;
-        await captureScreenshot(driver);
-        await captureDiagnostics(driver);
-        throw err;
-      } finally {
-        await driver?.quit();
-        geckoLog.end();
-      }
-    },
-  );
+    const out = await sendTorrent(
+      {
+        provider,
+        notifications: fakeNotifications(record),
+        messaging,
+        parser: parseTorrent,
+        computeHash: computeV1InfoHash,
+        classify: classifyLink,
+      },
+      intent(`https://cdn.other.com/x.torrent`),
+      Date.now() + 30000,
+    );
+
+    expect(out.kind).toBe("failed");
+    expect(record.notified).toContain("Cross-origin link not supported");
+  });
 });

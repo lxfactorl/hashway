@@ -103,20 +103,14 @@ could create a duplicate magnet in the Real-Debrid account. The caller maps the 
 success). Only idempotent operations (`selectFiles`, `validateToken`) are retried, up to 3 attempts
 with exponential backoff within the 30 s action deadline.
 
-## Test-only seams are unreachable from the real UI
+## No test-only seams in production
 
-- The background message listener accepts `hashway:test:setup` and `hashway:test:send` messages and
-  an optional test `rdBaseUrl` override. These are consumed only by the geckodriver E2E
-  (`tests/e2e/send-to-rd.e2e.ts`), which sends them from the options page via
-  `browser.runtime.sendMessage`.
-- To reach the options page, the E2E sets the extension's `moz-extension://…/options.html` URL as
-  the Firefox startup homepage (with the extension UUID pinned via `extensions.webextensions.uuids`).
-  Firefox forbids both top-level navigation and script-initiated `window.open` to `moz-extension://`
-  URLs from WebDriver, but the browser's own startup navigation is not restricted; no
-  `web_accessible_resources` entry is needed, so no web page can ever open or read the options page.
-- No production flow sends these message types, and the context-menu flow uses the real
-  `createRealDebridClient` against the fixed production base URL. The production artifact therefore
-  contains no reachable test endpoint or fake-provider path.
+- The background message listener was considered for a `hashway:test:*` seam but rejected: the E2E
+  (`tests/e2e/send-to-rd.e2e.ts`) drives the real `sendTorrent` use case directly against a fake RD
+  from Node, and geckodriver forbids navigation to `moz-extension://` URLs anyway. The production
+  artifact therefore contains no reachable test endpoint, no fake-provider path, and no
+  `web_accessible_resources` entry (no web page can ever open or read the options page).
+- The real context-menu click on a live tracker page is a manual smoke step (see `docs/testing.md`).
 
 ## Failure posture
 

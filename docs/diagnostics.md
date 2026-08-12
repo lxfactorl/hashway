@@ -75,6 +75,6 @@ case and reports "Diagnostics downloaded" (or the error) in the status line.
 
 ## Failure artifacts (E2E)
 
-On E2E failure, the geckodriver harness writes `screenshots/send-to-rd-failure.png` and
-`diagnostics-exports/hashway-diagnostics.json` (from `browser.storage.local` directly) for CI
-artifact upload. See `docs/testing.md`.
+The E2E integration test (`tests/e2e/send-to-rd.e2e.ts`) does not drive a browser, so it writes no
+screenshots. The `hello-world.e2e.ts` Selenium test captures SEVERE console errors only. See
+`docs/testing.md`.
