@@ -187,10 +187,12 @@ describe("send-to-rd E2E", () => {
           .setFirefoxOptions(options)
           .build();
 
-        await driver.get("about:blank");
         // geckodriver rejects top-level navigation to moz-extension:// URLs
-        // (UnsupportedOperationError), so open the options page via window.open
-        // and switch to the new tab instead.
+        // (UnsupportedOperationError), and window.open to an extension page is
+        // denied from the null-principal about:blank context. Navigate to a real
+        // origin (the fake tracker) first, then open the web-accessible options
+        // page from there and switch to the new tab.
+        await driver.get(`http://127.0.0.1:${String(trackerPort)}/`);
         await driver.executeScript("window.open(arguments[0], '_blank');", OPTIONS_URL);
         await driver.wait(
           async () => (await driver.getAllWindowHandles()).length >= 2,
