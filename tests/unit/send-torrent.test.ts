@@ -7,6 +7,7 @@ import { accepted, alreadyActive, failed, unknown, type Outcome } from "@domain/
 import { BencodeError, parseTorrent, type ParsedTorrent } from "@domain/bencode";
 import { computeV1InfoHash } from "@domain/infohash";
 import { classifyLink } from "@adapters/firefox/active-tab";
+import { createRealDebridClient } from "@adapters/real-debrid/client";
 import type { ProviderPort } from "@ports/provider";
 import type { NotificationsPort, Badge } from "@ports/notifications";
 import type { MessagingPort, FetchTrackerResponse } from "@ports/messaging";
@@ -349,6 +350,25 @@ describe("sendTorrent parser errors", () => {
 });
 
 describe("sendTorrent provider orchestration", () => {
+  it("201 without a torrent id -> unknown and no selectFiles request", async () => {
+    const requests: string[] = [];
+    const provider = createRealDebridClient({
+      fetchFn: (url) => {
+        requests.push(typeof url === "string" ? url : url instanceof URL ? url.href : url.url);
+        return Promise.resolve(new Response("{}", { status: 201 }));
+      },
+      getToken: () => Promise.resolve("tok"),
+    });
+    const { notifications, deps } = makeDeps({ provider });
+
+    const out = await sendTorrent(deps, magnetIntent(), Date.now() + 30000);
+
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toContain("/torrents/addMagnet");
+    expectNotified(notifications, "Unknown outcome — check your Real-Debrid account");
+  });
+
   it("addMagnet unknown_outcome -> unknown, NO selectFiles, single addMagnet call", async () => {
     const { provider, notifications, deps } = makeDeps({
       provider: fakeProvider({
