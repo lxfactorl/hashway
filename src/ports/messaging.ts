@@ -8,7 +8,12 @@ export type FetchTrackerResponse =
   | {
       readonly ok: false;
       readonly reason:
-        "http_error" | "redirect" | "oversized" | "non_torrent" | "session_required" | "network";
+        | "http_error"
+        | "redirect"
+        | "oversized"
+        | "non_torrent"
+        | "session_required"
+        | "network";
       readonly status?: number;
     };
 export interface MessagingPort {

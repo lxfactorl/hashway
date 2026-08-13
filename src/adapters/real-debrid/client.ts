@@ -15,6 +15,9 @@ export interface RdClientDeps {
 }
 
 const DEFAULT_BASE = "https://api.real-debrid.com/rest/1.0";
+const RD_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const INVALID_ADD_ID_MESSAGE = "addMagnet response missing or invalid torrent id";
+const INVALID_SELECT_ID_MESSAGE = "Invalid torrent id";
 
 type RdResult =
   | { readonly kind: "ok"; readonly status: number; readonly body: unknown }
@@ -32,8 +35,8 @@ function extractId(body: unknown): string {
   if (!("id" in body)) return "";
   const raw: unknown = body.id;
   if (raw === null) return "";
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "number") return String(raw);
+  if (typeof raw === "string" && RD_ID_PATTERN.test(raw)) return raw;
+  if (typeof raw === "number" && Number.isSafeInteger(raw) && raw >= 0) return String(raw);
   return "";
 }
 
@@ -97,15 +100,17 @@ export function createRealDebridClient(deps: RdClientDeps): ProviderPort {
       }
       const outcome = mapAddMagnetResult(r.status, parseErrorCode(r.body));
       if (outcome.kind !== "accepted") return outcome;
-      return accepted({ id: extractId(r.body) });
+      const id = extractId(r.body);
+      return id ? accepted({ id }) : unknown(INVALID_ADD_ID_MESSAGE);
     },
     async selectFiles(req, deadline) {
+      if (!RD_ID_PATTERN.test(req.id)) return failed("internal", INVALID_SELECT_ID_MESSAGE);
       const token = await deps.getToken();
       if (!token) return failed("configuration", "Real-Debrid token is not configured");
       const r = await doFetch(
         deps,
         "POST",
-        `/torrents/selectFiles/${req.id}`,
+        `/torrents/selectFiles/${encodeURIComponent(req.id)}`,
         new URLSearchParams({ files: req.files }),
         token,
         deadline,

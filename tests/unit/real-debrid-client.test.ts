@@ -1,6 +1,7 @@
 // tests/unit/real-debrid-client.test.ts
 import { describe, it, expect } from "vitest";
 import { createRealDebridClient } from "@adapters/real-debrid/client";
+import { failed, unknown } from "@domain/error-taxonomy";
 
 function fakeFetch(map: Record<string, { status: number; body?: unknown }>): typeof fetch {
   return (url: string | URL | Request) => {
@@ -33,12 +34,17 @@ describe("RealDebrid client", () => {
     expect(out.kind).toBe("accepted");
     if (out.kind === "accepted") expect(out.id).toBe("123");
   });
-  it("addMagnet 201 without id in body -> accepted with empty id", async () => {
+  it("addMagnet with an invalid id -> unknown outcome", async () => {
+    const f = fakeFetch({ "/torrents/addMagnet": { status: 201, body: { id: "../user" } } });
+    const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
+    const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
+  });
+  it("addMagnet 201 without id in body -> unknown outcome", async () => {
     const f = fakeFetch({ "/torrents/addMagnet": { status: 201, body: {} } });
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
-    expect(out.kind).toBe("accepted");
-    if (out.kind === "accepted") expect(out.id).toBe("");
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
   });
   it("addMagnet 429 -> failed transient (no retry here)", async () => {
     const f = fakeFetch({ "/torrents/addMagnet": { status: 429 } });
@@ -96,14 +102,13 @@ describe("RealDebrid client", () => {
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() - 5000);
     expect(out.kind).toBe("unknown_outcome");
   });
-  it("addMagnet tolerates a non-object body", async () => {
+  it("addMagnet without an object body -> unknown outcome", async () => {
     const f = fakeFetch({ "/torrents/addMagnet": { status: 201, body: "just-a-string" } });
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
-    expect(out.kind).toBe("accepted");
-    if (out.kind === "accepted") expect(out.id).toBe("");
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
   });
-  it("addMagnet tolerates a non-JSON body", async () => {
+  it("addMagnet without a JSON body -> unknown outcome", async () => {
     const f: typeof fetch = () =>
       Promise.resolve(
         new Response("not-json {", {
@@ -113,20 +118,18 @@ describe("RealDebrid client", () => {
       );
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
-    expect(out.kind).toBe("accepted");
-    if (out.kind === "accepted") expect(out.id).toBe("");
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
   });
-  it("addMagnet treats a null body as no error code", async () => {
+  it("addMagnet with a null body -> unknown outcome", async () => {
     const f: typeof fetch = () =>
       Promise.resolve(
         new Response("null", { status: 201, headers: { "Content-Type": "application/json" } }),
       );
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
-    expect(out.kind).toBe("accepted");
-    if (out.kind === "accepted") expect(out.id).toBe("");
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
   });
-  it("addMagnet treats a null id as the empty-string sentinel", async () => {
+  it("addMagnet with a null id -> unknown outcome", async () => {
     const f: typeof fetch = () =>
       Promise.resolve(
         new Response(JSON.stringify({ id: null }), {
@@ -136,8 +139,7 @@ describe("RealDebrid client", () => {
       );
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.addMagnet({ magnet: "magnet:?xt=urn:btih:abc" }, Date.now() + 30000);
-    expect(out.kind).toBe("accepted");
-    if (out.kind === "accepted") expect(out.id).toBe("");
+    expect(out).toEqual(unknown("addMagnet response missing or invalid torrent id"));
   });
   it("addMagnet missing token -> configuration failed", async () => {
     const c = createRealDebridClient({
@@ -152,6 +154,18 @@ describe("RealDebrid client", () => {
     const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
     const out = await c.selectFiles({ id: "x", files: "all" }, Date.now() + 30000);
     expect(out.kind).toBe("accepted");
+  });
+  it("selectFiles rejects an invalid provider id before making a request", async () => {
+    let requested = false;
+    const f: typeof fetch = (url) => {
+      void url;
+      requested = true;
+      return Promise.resolve(new Response("", { status: 202 }));
+    };
+    const c = createRealDebridClient({ fetchFn: f, getToken: () => Promise.resolve("tok") });
+    const out = await c.selectFiles({ id: "id/with/slashes", files: "all" }, Date.now() + 30000);
+    expect(out).toEqual(failed("internal", "Invalid torrent id"));
+    expect(requested).toBe(false);
   });
   it("selectFiles network throw -> provider_transient failed", async () => {
     const f: typeof fetch = () => {
