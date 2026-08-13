@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/lxfactorl/hashway/compare/v0.3.1...v0.3.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **real-debrid:** guard invalid torrent ids ([#63](https://github.com/lxfactorl/hashway/issues/63)) ([2672108](https://github.com/lxfactorl/hashway/commit/2672108df96d73591efe69f29c23c0241f05afb3))
+
 ## [0.3.1](https://github.com/lxfactorl/hashway/compare/v0.3.0...v0.3.1) (2026-08-13)
 
 
