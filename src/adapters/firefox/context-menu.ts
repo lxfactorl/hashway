@@ -2,10 +2,24 @@
 import type { ContextMenuPort } from "@ports/context-menu";
 
 export function createFirefoxContextMenu(): ContextMenuPort {
+  let registration = Promise.resolve();
+
   return {
     register(title) {
-      browser.contextMenus.create({ id: "hashway-send", title, contexts: ["link"] });
-      return Promise.resolve();
+      const nextRegistration = registration
+        .catch(() => undefined)
+        .then(async () => {
+          try {
+            await Promise.resolve(browser.contextMenus.remove("hashway-send"));
+          } catch {
+            // The item may not exist on the first registration.
+          }
+          await Promise.resolve(
+            browser.contextMenus.create({ id: "hashway-send", title, contexts: ["link"] }),
+          );
+        });
+      registration = nextRegistration;
+      return nextRegistration;
     },
     onClick(listener) {
       browser.contextMenus.onClicked.addListener((info, tab) => {
