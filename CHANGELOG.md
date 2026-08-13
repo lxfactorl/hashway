@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/lxfactorl/hashway/compare/v0.3.0...v0.3.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* initialize extension after browser restart ([#60](https://github.com/lxfactorl/hashway/issues/60)) ([dd9d9cd](https://github.com/lxfactorl/hashway/commit/dd9d9cded11c38043bf8d03ccc494708923432c4))
+
 ## [0.3.0](https://github.com/lxfactorl/hashway/compare/v0.2.2...v0.3.0) (2026-08-12)
 
 
