@@ -10,6 +10,7 @@ import { createRealDebridClient } from "@adapters/real-debrid/client";
 import { createRingBuffer } from "@adapters/diagnostics/ring-buffer";
 import { redactUrl } from "@adapters/diagnostics/redaction";
 import { sendTorrent } from "@application/send-torrent";
+import { registerExtensionLifecycle } from "@application/extension-lifecycle";
 import { parseTorrent } from "@domain/bencode";
 import { computeV1InfoHash } from "@domain/infohash";
 import type { LinkClickIntent } from "@ports/context-menu";
@@ -25,11 +26,13 @@ export default defineBackground(() => {
   const messaging = createFirefoxMessaging();
   const ringBuffer = createRingBuffer(storage, 4 * 1024 * 1024);
 
-  browser.runtime.onInstalled.addListener(() => {
+  const initializeExtension = () => {
     browser.browserAction.setBadgeText({ text: "ON" });
     browser.browserAction.setBadgeBackgroundColor({ color: "#0a0" });
     void contextMenu.register("Send to Real-Debrid");
-  });
+  };
+
+  registerExtensionLifecycle(browser.runtime, initializeExtension);
 
   contextMenu.onClick((intent) => {
     void sendToRealDebrid(intent);
